@@ -1,0 +1,101 @@
+{
+  "projectType": "saas",
+  "projectName": "Midday",
+  "projectDescription": "An AI-powered business assistant for freelancers offering invoicing, time tracking, file reconciliation, storage, and financial insights.",
+  "theme": "mint",
+  "primaryColor": "#10b981",
+  "lightColor": "#34d399",
+  "darkColor": "#059669",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "installation"
+            ]
+          },
+          {
+            "group": "Core Features",
+            "pages": [
+              "features/time-tracking",
+              "features/invoicing",
+              "features/inbox",
+              "features/vault",
+              "features/assistant",
+              "features/transactions",
+              "features/customers"
+            ]
+          },
+          {
+            "group": "Integrations",
+            "pages": [
+              "integrations/overview",
+              "integrations/banking",
+              "integrations/apps",
+              "integrations/webhooks"
+            ]
+          },
+          {
+            "group": "Development",
+            "pages": [
+              "development/architecture",
+              "development/database",
+              "development/monorepo",
+              "development/contributing"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "api/overview",
+              "api/authentication",
+              "api/rate-limits"
+            ]
+          },
+          {
+            "group": "Resources",
+            "pages": [
+              "api/banking",
+              "api/invoices",
+              "api/transactions",
+              "api/customers",
+              "api/documents",
+              "api/tracker",
+              "api/inbox"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Time Tracking - Live project time tracking with insightful overviews",
+    "Invoicing - Web-based invoices with real-time collaboration",
+    "Magic Inbox - Automatic invoice and receipt matching",
+    "Vault - Secure storage for contracts and important documents",
+    "AI Assistant - Financial insights and document search",
+    "Bank Integrations - Connect accounts via GoCardLess, Plaid, or Teller",
+    "Desktop App - Native desktop application built with Tauri",
+    "Recurring Invoices - Automated invoice generation and scheduling"
+  ],
+  "publicApiSurface": [
+    "tRPC API - accounting, banking, invoices, transactions, customers",
+    "REST API - /api/files, /api/apps, /api/webhooks",
+    "Banking Integration - GoCardLess, Plaid, Teller connectors",
+    "Invoice Templates - HTML, PDF, and OG image generation",
+    "AI Agents - Title generation, suggestions, memory management",
+    "Background Jobs - Trigger.dev integration for async processing",
+    "Webhooks - Event notifications for invoices, transactions, banking",
+    "OAuth - Third-party app integrations (Fortnox, Slack, WhatsApp)"
+  ]
+}
