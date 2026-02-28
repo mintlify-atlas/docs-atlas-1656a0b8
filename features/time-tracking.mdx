@@ -1,0 +1,258 @@
+---
+title: Time Tracking
+description: Track time across projects with live timers, calendar views, and collaborative features for accurate billing and productivity insights.
+---
+
+## Overview
+
+Midday's time tracking system provides a comprehensive solution for tracking billable hours across projects. With live timers, visual calendar views, and seamless integration with invoicing, you can accurately track time and convert it into invoices.
+
+## Key Features
+
+### Live Timer
+
+Start and stop timers for your projects with a single click. The timer runs in real-time and syncs across all your devices.
+
+<Note>
+  Timers under 1 minute are automatically discarded to prevent accidental entries.
+</Note>
+
+**Starting a Timer:**
+
+<Steps>
+  <Step title="Select a project">
+    Navigate to the Tracker page and find the project you want to track time for.
+  </Step>
+  
+  <Step title="Start tracking">
+    Click the play button next to the project name. The timer will start immediately and display real-time elapsed time.
+  </Step>
+  
+  <Step title="Stop the timer">
+    Hold down the stop button for 1.5 seconds to stop tracking. This prevents accidental stops.
+  </Step>
+</Steps>
+
+### Calendar Views
+
+Visualize your time entries with flexible calendar views:
+
+**Month View:**
+- See all time entries for the entire month
+- Drag to select date ranges for bulk operations
+- Visual indicators for billable hours per day
+- Navigate with arrow keys (← →)
+
+**Week View:**
+- Focused view of the current week
+- Detailed time breakdown by day
+- Easier to spot patterns and gaps
+
+<Tabs>
+  <Tab title="Month View">
+    ```typescript
+    // Calendar displays entries across the entire month
+    // Perfect for monthly reporting and overview
+    const monthView = {
+      weekStartsOnMonday: true,
+      showBillableHours: true,
+      allowDateRangeSelection: true
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Week View">
+    ```typescript
+    // Week view shows detailed daily breakdown
+    // Ideal for focused weekly planning
+    const weekView = {
+      currentWeek: true,
+      detailedTimeBreakdown: true,
+      keyboardNavigation: true
+    }
+    ```
+  </Tab>
+</Tabs>
+
+### Project Management
+
+Organize your time tracking by project:
+
+- **Create Projects:** Set up projects with names and details
+- **Project Status:** Track active vs. inactive projects
+- **Project Stats:** View total hours and billable amounts per project
+- **Search & Filter:** Quickly find projects using search
+
+### Time Entry Management
+
+**Manual Time Entries:**
+
+<Steps>
+  <Step title="Open the tracker sheet">
+    Click the "+" button in the tracker header to create a new time entry.
+  </Step>
+  
+  <Step title="Fill in details">
+    - Select a project
+    - Choose date and time
+    - Add duration
+    - Include notes (optional)
+  </Step>
+  
+  <Step title="Save the entry">
+    Your time entry is immediately added to the project and visible in the calendar.
+  </Step>
+</Steps>
+
+**Edit Existing Entries:**
+- Click any calendar entry to edit details
+- Adjust duration, date, or project
+- Delete entries if needed
+
+### Billable Hours Tracking
+
+Track billable hours with precision:
+
+```typescript
+// Real-time billable hours calculation
+const billableHours = {
+  totalDuration: "42:30:15", // HH:MM:SS format
+  dailyBreakdown: true,
+  weeklyTotals: true,
+  monthlyTotals: true
+}
+```
+
+### Keyboard Shortcuts
+
+Navigate faster with keyboard shortcuts:
+
+- `←` - Previous week/month
+- `→` - Next week/month
+- Click + `Shift` - Select date range
+
+## Integration with Invoicing
+
+Convert tracked time directly into invoices:
+
+<Steps>
+  <Step title="Select time entries">
+    Use the calendar to select a date range or individual entries for a project.
+  </Step>
+  
+  <Step title="Create invoice">
+    Click "Create Invoice" and your time entries are automatically converted to line items.
+  </Step>
+  
+  <Step title="Review and send">
+    Review the invoice with pre-populated time data and send to your client.
+  </Step>
+</Steps>
+
+## Collaboration Features
+
+### Multi-device Sync
+
+Your time entries sync in real-time across all devices:
+- Start a timer on desktop, stop it on mobile
+- Changes reflect immediately across all sessions
+- Optimistic updates for instant feedback
+
+### Team Tracking
+
+For team accounts:
+- View time entries across team members
+- Track project hours by team
+- Generate team-wide reports
+
+## Reports & Export
+
+### CSV Export
+
+Export your time data for external analysis:
+
+```typescript
+// Export time entries with full details
+const exportData = {
+  format: "csv",
+  fields: [
+    "date",
+    "project",
+    "duration",
+    "notes",
+    "billable"
+  ]
+}
+```
+
+### Visual Reports
+
+The calendar view provides visual insights:
+- Daily hour totals
+- Color-coded entries by project
+- Billable hours summary header
+- Week and month totals
+
+## Best Practices
+
+<Note>
+  **Tip:** Set your week start preference (Monday/Sunday) in account settings to match your workflow.
+</Note>
+
+1. **Start timers immediately** - Don't rely on memory, track as you work
+2. **Use consistent project names** - Makes reporting and invoicing easier
+3. **Add notes to entries** - Future you will thank you when creating invoices
+4. **Review weekly** - Check your calendar view weekly to catch any gaps
+5. **Set up projects upfront** - Create all your projects at the start for consistency
+
+## Real-time Updates
+
+The tracker uses real-time technology:
+
+```typescript
+// Live timer updates every second
+const timerSync = {
+  updateInterval: 1000, // 1 second
+  optimisticUpdates: true,
+  realtimeSync: true,
+  conflictResolution: "last-write-wins"
+}
+```
+
+<Warning>
+  If you have multiple timers running in different tabs, only one timer can run at a time. You'll be prompted to stop the active timer before starting a new one.
+</Warning>
+
+## Technical Details
+
+### Timer Behavior
+
+- **Minimum Duration:** 1 minute (shorter entries are discarded)
+- **Maximum Duration:** No limit
+- **Hold-to-Stop:** 1.5 seconds to prevent accidental stops
+- **Auto-save:** Entries are saved immediately when stopped
+
+### Data Storage
+
+All time entries are:
+- Stored in UTC timezone
+- Converted to your local timezone for display
+- Synced in real-time via WebSocket
+- Backed up continuously
+
+## Troubleshooting
+
+**Timer not starting?**
+- Check if another timer is running
+- Refresh the page to sync latest state
+- Ensure you have an active project selected
+
+**Calendar not showing entries?**
+- Verify the date range selected
+- Check if any filters are applied
+- Try switching between week/month view
+
+**Time calculation seems wrong?**
+- Confirm your timezone settings
+- Check for overlapping entries
+- Verify all entries are saved (look for sync indicators)

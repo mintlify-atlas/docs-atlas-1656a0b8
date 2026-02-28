@@ -1,0 +1,524 @@
+---
+title: 'Invoices'
+description: 'Invoice management API for creating, updating, and tracking invoices'
+---
+
+The Invoice API provides comprehensive endpoints for managing invoices, including CRUD operations, payment tracking, scheduling, and analytics.
+
+## Query Endpoints
+
+### get
+
+Retrieve a paginated list of invoices for the current team.
+
+<ParamField query="status" type="string" optional>
+  Filter by status: "draft", "unpaid", "paid", "overdue", "canceled", "scheduled"
+</ParamField>
+
+<ParamField query="customerId" type="string" optional>
+  Filter by customer ID
+</ParamField>
+
+<ParamField query="q" type="string" optional>
+  Search query for invoice number or customer name
+</ParamField>
+
+<ParamField query="start" type="string" optional>
+  Start date for filtering (ISO 8601)
+</ParamField>
+
+<ParamField query="end" type="string" optional>
+  End date for filtering (ISO 8601)
+</ParamField>
+
+<ParamField query="sort" type="array" optional>
+  Array of sort objects with field and direction
+</ParamField>
+
+```typescript
+import { trpc } from '@/lib/trpc';
+
+const invoices = await trpc.invoice.get.query({
+  status: 'unpaid',
+  start: '2024-01-01',
+  end: '2024-12-31',
+});
+```
+
+### getById
+
+Retrieve a specific invoice by ID.
+
+<ParamField query="id" type="string" required>
+  The invoice ID (UUID)
+</ParamField>
+
+<ResponseField name="invoice" type="object">
+  <Expandable title="Invoice properties">
+    <ResponseField name="id" type="string">
+      Invoice UUID
+    </ResponseField>
+    <ResponseField name="invoiceNumber" type="string">
+      Human-readable invoice number
+    </ResponseField>
+    <ResponseField name="status" type="string">
+      Invoice status
+    </ResponseField>
+    <ResponseField name="amount" type="number">
+      Total amount
+    </ResponseField>
+    <ResponseField name="currency" type="string">
+      Three-letter currency code
+    </ResponseField>
+    <ResponseField name="issueDate" type="string">
+      ISO 8601 timestamp
+    </ResponseField>
+    <ResponseField name="dueDate" type="string">
+      ISO 8601 timestamp
+    </ResponseField>
+    <ResponseField name="lineItems" type="array">
+      Array of line item objects
+    </ResponseField>
+    <ResponseField name="customer" type="object" optional>
+      Customer object if customerId is set
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+```typescript
+const invoice = await trpc.invoice.getById.query({
+  id: 'uuid-here',
+});
+```
+
+### getInvoiceByToken
+
+<Note>Public endpoint - no authentication required</Note>
+
+Retrieve an invoice using a secure token (used for customer portal).
+
+<ParamField query="token" type="string" required>
+  The URL-encoded secure token
+</ParamField>
+
+```typescript
+const invoice = await trpc.invoice.getInvoiceByToken.query({
+  token: encodedToken,
+});
+```
+
+### paymentStatus
+
+Get payment status summary for the team's invoices.
+
+<ResponseField name="data" type="object">
+  <Expandable title="properties">
+    <ResponseField name="paid" type="number">
+      Total amount paid
+    </ResponseField>
+    <ResponseField name="unpaid" type="number">
+      Total amount unpaid
+    </ResponseField>
+    <ResponseField name="overdue" type="number">
+      Total amount overdue
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### searchInvoiceNumber
+
+Search for invoice numbers (autocomplete).
+
+<ParamField query="query" type="string" required>
+  Search query
+</ParamField>
+
+<ResponseField name="results" type="array">
+  Array of matching invoice numbers
+</ResponseField>
+
+### invoiceSummary
+
+Get invoice statistics and summary.
+
+<ParamField query="statuses" type="array" optional>
+  Array of statuses to filter by
+</ParamField>
+
+<ResponseField name="data" type="object">
+  <Expandable title="properties">
+    <ResponseField name="totalCount" type="number">
+      Total number of invoices
+    </ResponseField>
+    <ResponseField name="totalAmount" type="number">
+      Total amount across all invoices
+    </ResponseField>
+    <ResponseField name="currency" type="string">
+      Base currency
+    </ResponseField>
+    <ResponseField name="byStatus" type="object">
+      Breakdown by status
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### defaultSettings
+
+Get default settings for creating a new invoice.
+
+<ResponseField name="data" type="object">
+  <Expandable title="properties">
+    <ResponseField name="id" type="string">
+      Pre-generated UUID for new invoice
+    </ResponseField>
+    <ResponseField name="invoiceNumber" type="string">
+      Next available invoice number
+    </ResponseField>
+    <ResponseField name="currency" type="string">
+      Default currency from team settings
+    </ResponseField>
+    <ResponseField name="template" type="object">
+      Template settings (labels, formatting, etc.)
+    </ResponseField>
+    <ResponseField name="issueDate" type="string">
+      Today's date (ISO 8601)
+    </ResponseField>
+    <ResponseField name="dueDate" type="string">
+      Due date based on payment terms (ISO 8601)
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+```typescript
+const defaults = await trpc.invoice.defaultSettings.query();
+
+// Use defaults to populate new invoice form
+setFormData(defaults);
+```
+
+## Mutation Endpoints
+
+### draft
+
+Create a new draft invoice.
+
+<ParamField body="id" type="string" required>
+  UUID for the invoice (use defaultSettings to get one)
+</ParamField>
+
+<ParamField body="invoiceNumber" type="string" optional>
+  Invoice number (auto-generated if not provided)
+</ParamField>
+
+<ParamField body="customerId" type="string" optional>
+  Customer UUID
+</ParamField>
+
+<ParamField body="customerName" type="string" optional>
+  Customer name if no customerId
+</ParamField>
+
+<ParamField body="currency" type="string" required>
+  Three-letter currency code
+</ParamField>
+
+<ParamField body="lineItems" type="array" required>
+  Array of line items
+</ParamField>
+
+<ParamField body="issueDate" type="string" required>
+  Issue date (ISO 8601)
+</ParamField>
+
+<ParamField body="dueDate" type="string" required>
+  Due date (ISO 8601)
+</ParamField>
+
+<ParamField body="template" type="object" required>
+  Template configuration
+</ParamField>
+
+```typescript
+const invoice = await trpc.invoice.draft.mutate({
+  id: generatedId,
+  customerId: 'customer-uuid',
+  currency: 'USD',
+  lineItems: [
+    {
+      name: 'Web Development',
+      quantity: 40,
+      price: 150,
+      vat: 0,
+    },
+  ],
+  issueDate: new Date().toISOString(),
+  dueDate: addDays(new Date(), 30).toISOString(),
+  template: templateSettings,
+});
+```
+
+### create
+
+Finalize and create an invoice from a draft.
+
+<ParamField body="id" type="string" required>
+  The draft invoice ID
+</ParamField>
+
+<ParamField body="deliveryType" type="string" required>
+  "create" | "create_and_send" | "scheduled"
+</ParamField>
+
+<ParamField body="scheduledAt" type="string" optional>
+  Required if deliveryType is "scheduled" (ISO 8601)
+</ParamField>
+
+<ResponseField name="data" type="object">
+  The created/scheduled invoice object
+</ResponseField>
+
+```typescript
+// Create immediately
+const invoice = await trpc.invoice.create.mutate({
+  id: draftId,
+  deliveryType: 'create',
+});
+
+// Create and send
+const invoice = await trpc.invoice.create.mutate({
+  id: draftId,
+  deliveryType: 'create_and_send',
+});
+
+// Schedule for later
+const invoice = await trpc.invoice.create.mutate({
+  id: draftId,
+  deliveryType: 'scheduled',
+  scheduledAt: '2024-12-01T09:00:00Z',
+});
+```
+
+### update
+
+Update an existing invoice.
+
+<ParamField body="id" type="string" required>
+  The invoice ID
+</ParamField>
+
+<ParamField body="status" type="string" optional>
+  New status
+</ParamField>
+
+<ParamField body="lineItems" type="array" optional>
+  Updated line items
+</ParamField>
+
+<ParamField body="dueDate" type="string" optional>
+  Updated due date
+</ParamField>
+
+```typescript
+const updated = await trpc.invoice.update.mutate({
+  id: invoiceId,
+  status: 'paid',
+});
+```
+
+### delete
+
+Delete an invoice.
+
+<ParamField body="id" type="string" required>
+  The invoice ID
+</ParamField>
+
+```typescript
+await trpc.invoice.delete.mutate({
+  id: invoiceId,
+});
+```
+
+### duplicate
+
+Duplicate an existing invoice with a new invoice number.
+
+<ParamField body="id" type="string" required>
+  The invoice ID to duplicate
+</ParamField>
+
+<ResponseField name="data" type="object">
+  The new invoice object
+</ResponseField>
+
+```typescript
+const duplicated = await trpc.invoice.duplicate.mutate({
+  id: invoiceId,
+});
+```
+
+### remind
+
+Send a payment reminder for an invoice.
+
+<ParamField body="id" type="string" required>
+  The invoice ID
+</ParamField>
+
+<ParamField body="date" type="string" required>
+  Timestamp of when reminder was sent (ISO 8601)
+</ParamField>
+
+```typescript
+await trpc.invoice.remind.mutate({
+  id: invoiceId,
+  date: new Date().toISOString(),
+});
+```
+
+## Scheduling
+
+### updateSchedule
+
+Update the scheduled send date for a scheduled invoice.
+
+<ParamField body="id" type="string" required>
+  The scheduled invoice ID
+</ParamField>
+
+<ParamField body="scheduledAt" type="string" required>
+  New scheduled date (ISO 8601, must be in the future)
+</ParamField>
+
+```typescript
+await trpc.invoice.updateSchedule.mutate({
+  id: invoiceId,
+  scheduledAt: '2024-12-15T10:00:00Z',
+});
+```
+
+### cancelSchedule
+
+Cancel a scheduled invoice and return it to draft status.
+
+<ParamField body="id" type="string" required>
+  The scheduled invoice ID
+</ParamField>
+
+```typescript
+await trpc.invoice.cancelSchedule.mutate({
+  id: invoiceId,
+});
+```
+
+## Time Tracking Integration
+
+### createFromTracker
+
+Create an invoice from time tracking entries.
+
+<ParamField body="projectId" type="string" required>
+  The tracker project UUID
+</ParamField>
+
+<ParamField body="dateFrom" type="string" required>
+  Start date for time entries (ISO 8601 date)
+</ParamField>
+
+<ParamField body="dateTo" type="string" required>
+  End date for time entries (ISO 8601 date)
+</ParamField>
+
+<ResponseField name="data" type="object">
+  The created draft invoice with calculated hours and amount
+</ResponseField>
+
+```typescript
+const invoice = await trpc.invoice.createFromTracker.mutate({
+  projectId: 'project-uuid',
+  dateFrom: '2024-11-01',
+  dateTo: '2024-11-30',
+});
+
+// Invoice will have a line item with:
+// - name: "Project Name (Nov 1, 2024 - Nov 30, 2024)"
+// - quantity: total hours tracked
+// - price: project hourly rate
+```
+
+## Analytics
+
+### mostActiveClient
+
+Get the client with the most invoices.
+
+<ResponseField name="data" type="object">
+  <Expandable title="properties">
+    <ResponseField name="customerId" type="string">
+      Customer UUID
+    </ResponseField>
+    <ResponseField name="customerName" type="string">
+      Customer name
+    </ResponseField>
+    <ResponseField name="invoiceCount" type="number">
+      Number of invoices
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### inactiveClientsCount
+
+Get the number of clients with no invoices in the last 90 days.
+
+<ResponseField name="count" type="number">
+  Number of inactive clients
+</ResponseField>
+
+### averageDaysToPayment
+
+Get the average number of days from invoice issue to payment.
+
+<ResponseField name="days" type="number">
+  Average days to payment
+</ResponseField>
+
+### averageInvoiceSize
+
+Get the average invoice amount.
+
+<ResponseField name="data" type="object">
+  <Expandable title="properties">
+    <ResponseField name="amount" type="number">
+      Average amount
+    </ResponseField>
+    <ResponseField name="currency" type="string">
+      Currency code
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### topRevenueClient
+
+Get the client with the highest total revenue.
+
+<ResponseField name="data" type="object">
+  <Expandable title="properties">
+    <ResponseField name="customerId" type="string">
+      Customer UUID
+    </ResponseField>
+    <ResponseField name="customerName" type="string">
+      Customer name
+    </ResponseField>
+    <ResponseField name="totalRevenue" type="number">
+      Total revenue amount
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### newCustomersCount
+
+Get the number of new customers in the current period.
+
+<ResponseField name="count" type="number">
+  Number of new customers
+</ResponseField>

@@ -1,0 +1,149 @@
+---
+title: Introduction
+description: Welcome to Midday - Your AI-Powered Business Assistant for freelancers, contractors, and solo entrepreneurs
+---
+
+# Welcome to Midday
+
+Midday is an all-in-one platform designed to help freelancers, contractors, consultants, and solo entrepreneurs manage their business operations more efficiently. Built with modern technologies, Midday integrates invoicing, time tracking, bank reconciliation, file storage, and financial insights into a single cohesive system.
+
+## What Makes Midday Different
+
+Midday eliminates the need to juggle multiple tools by bringing everything you need into one powerful platform:
+
+<CardGroup cols={2}>
+  <Card title="Time Tracking" icon="clock" iconType="duotone">
+    Live time tracking with project insights and collaboration features to boost productivity
+  </Card>
+  <Card title="Smart Invoicing" icon="file-invoice" iconType="duotone">
+    Create professional web-based invoices with real-time collaboration and automatic project synchronization
+  </Card>
+  <Card title="Magic Inbox" icon="inbox" iconType="duotone">
+    Automatically match incoming invoices and receipts to the correct transactions for effortless organization
+  </Card>
+  <Card title="Secure Vault" icon="shield-check" iconType="duotone">
+    Store contracts, agreements, and important files in one secure, easily accessible location
+  </Card>
+  <Card title="Bank Integration" icon="building-columns" iconType="duotone">
+    Connect to 20,000+ banks across the US, Canada, and Europe with automatic transaction sync
+  </Card>
+  <Card title="AI Assistant" icon="sparkles" iconType="duotone">
+    Get tailored insights into your finances, understand spending patterns, and find documents instantly
+  </Card>
+</CardGroup>
+
+## Key Features
+
+### Comprehensive Bank Integration
+
+Midday supports multiple banking providers to give you maximum flexibility:
+
+- **GoCardLess** - 20,000+ banks across Europe
+- **Plaid** - US and Canadian banks
+- **Teller** - Additional US bank coverage
+- **EnableBanking** - Extended European coverage
+
+```typescript
+// Midday's flexible banking provider architecture
+const provider = new Provider({
+  provider: "gocardless" // or "plaid", "teller", "enablebanking"
+});
+
+// Get transactions from any connected account
+const transactions = await provider.getTransactions({
+  accountId: "account_id",
+  accessToken: "token"
+});
+```
+
+### Professional Invoicing
+
+Create beautiful, professional invoices with support for multiple formats:
+
+- Web-based invoice editor with real-time preview
+- PDF generation for client delivery
+- Recurring invoice scheduling
+- Payment tracking and reminders
+- Multi-currency support
+
+### Intelligent Document Matching
+
+The Magic Inbox uses AI to automatically match receipts and invoices to transactions, saving you hours of manual reconciliation work.
+
+### Desktop & Mobile Apps
+
+Access Midday anywhere:
+
+- **Desktop App** - Built with Tauri for native performance on macOS, Windows, and Linux
+- **Mobile App** - Built with Expo for iOS and Android (coming soon)
+- **Web App** - Full-featured dashboard accessible from any browser
+
+## Technology Stack
+
+Midday is built with cutting-edge technologies for maximum performance and reliability:
+
+<CardGroup cols={3}>
+  <Card title="Next.js 16" icon="react">
+    React 19 with server components
+  </Card>
+  <Card title="Supabase" icon="database">
+    PostgreSQL with real-time subscriptions
+  </Card>
+  <Card title="TypeScript" icon="code">
+    End-to-end type safety
+  </Card>
+  <Card title="Bun" icon="rabbit-running">
+    Fast package management and runtime
+  </Card>
+  <Card title="Tauri" icon="desktop">
+    Native desktop applications
+  </Card>
+  <Card title="TailwindCSS" icon="palette">
+    Modern, responsive design
+  </Card>
+</CardGroup>
+
+## Getting Started
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Get up and running in minutes - connect your bank or create your first invoice
+  </Card>
+  <Card title="Installation" icon="code" href="/installation">
+    Set up Midday locally for development or self-hosting
+  </Card>
+</CardGroup>
+
+<Note>
+  Midday is open-source under AGPL-3.0 for non-commercial use. For commercial deployments, please contact [engineer@midday.ai](mailto:engineer@midday.ai) for licensing information.
+</Note>
+
+## Architecture Overview
+
+Midday uses a monorepo structure with multiple apps and shared packages:
+
+```bash
+midday/
+├── apps/
+│   ├── dashboard/    # Main web application (Next.js)
+│   ├── api/          # Backend API (Hono)
+│   ├── worker/       # Background job processor
+│   ├── desktop/      # Desktop app (Tauri)
+│   └── website/      # Marketing site
+├── packages/
+│   ├── banking/      # Banking provider integrations
+│   ├── invoice/      # Invoice generation and management
+│   ├── supabase/     # Database client and types
+│   └── ui/           # Shared UI components (shadcn/ui)
+```
+
+## Support & Community
+
+- **Documentation**: [docs.midday.ai](https://docs.midday.ai)
+- **Website**: [midday.ai](https://midday.ai)
+- **Issues**: [GitHub Issues](https://github.com/midday-ai/midday/issues)
+- **Email**: [engineer@midday.ai](mailto:engineer@midday.ai)
+
+<Info>
+  Ready to dive in? Start with our [Quickstart guide](/quickstart) to connect your bank account or create your first invoice.
+</Info>

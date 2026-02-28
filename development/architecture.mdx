@@ -1,0 +1,417 @@
+---
+title: Architecture
+description: Learn about Midday's system architecture, apps, packages, and technology stack
+---
+
+## Overview
+
+Midday is built as a modern monorepo using cutting-edge technologies designed for scalability, performance, and developer experience. The architecture follows a modular approach with multiple apps and shared packages.
+
+## Technology Stack
+
+### Core Technologies
+
+- **Bun** - Fast JavaScript runtime and package manager
+- **Turbo** - High-performance build system and monorepo tool
+- **TypeScript** - Type-safe JavaScript development
+- **React 19** - UI library with latest features
+- **Next.js 16** - Full-stack React framework
+- **Supabase** - Backend-as-a-service (database, auth, storage, realtime)
+
+### Key Libraries
+
+- **Drizzle ORM** - Type-safe database queries
+- **tRPC** - End-to-end typesafe APIs
+- **Hono** - Lightweight web framework for APIs
+- **Zod** - Schema validation
+- **TailwindCSS** - Utility-first CSS framework
+- **Shadcn/ui** - Accessible component library
+- **AI SDK** - AI integration (OpenAI, Google Gemini)
+
+## Applications
+
+Midday consists of 5 main applications:
+
+<Tabs>
+  <Tab title="Dashboard">
+    **Main Application** (`apps/dashboard`)
+    
+    The primary user-facing application built with Next.js 16.
+    
+    **Key Features:**
+    - Time tracking and invoicing
+    - Magic inbox for receipt matching
+    - Vault for document storage
+    - AI assistant for insights
+    - Real-time collaboration
+    
+    **Tech Stack:**
+    - Next.js 16 with App Router
+    - tRPC for API calls
+    - React 19
+    - Zustand for state management
+    - TanStack Query for data fetching
+    
+    **Development:**
+    ```bash
+    bun dev:dashboard
+    # Runs on http://localhost:3001
+    ```
+  </Tab>
+  
+  <Tab title="API">
+    **API Server** (`apps/api`)
+    
+    Backend API built with Hono and tRPC for business logic.
+    
+    **Responsibilities:**
+    - tRPC router definitions
+    - AI tools and agents
+    - OpenAPI endpoints
+    - Webhook handlers
+    - Rate limiting
+    
+    **Tech Stack:**
+    - Hono web framework
+    - tRPC server
+    - Zod validation
+    - OpenAPI with Scalar documentation
+    
+    **Development:**
+    ```bash
+    bun dev:api
+    # Runs on http://localhost:3003
+    ```
+  </Tab>
+  
+  <Tab title="Website">
+    **Marketing Site** (`apps/website`)
+    
+    Public-facing marketing website.
+    
+    **Features:**
+    - Product information
+    - Documentation
+    - Blog and changelog
+    - AI chat interface
+    
+    **Tech Stack:**
+    - Next.js 16
+    - MDX for content
+    - Framer Motion for animations
+    
+    **Development:**
+    ```bash
+    bun dev:website
+    # Runs on http://localhost:3000
+    ```
+  </Tab>
+  
+  <Tab title="Desktop">
+    **Desktop App** (`apps/desktop`)
+    
+    Native desktop application built with Tauri.
+    
+    **Features:**
+    - Time tracking
+    - Quick access to projects
+    - Global shortcuts
+    - Deep linking
+    
+    **Tech Stack:**
+    - Tauri 2
+    - React 19
+    - Vite
+    
+    **Development:**
+    ```bash
+    bun dev:desktop
+    ```
+  </Tab>
+  
+  <Tab title="Worker">
+    **Background Worker** (`apps/worker`)
+    
+    Background job processor for async tasks.
+    
+    **Responsibilities:**
+    - Transaction enrichment
+    - Document processing
+    - Bank sync jobs
+    - Email processing
+    - Insights generation
+    
+    **Tech Stack:**
+    - Bun runtime
+    - BullMQ for job queues
+    - Hono for health checks
+    
+    **Development:**
+    ```bash
+    cd apps/worker
+    bun dev
+    ```
+  </Tab>
+</Tabs>
+
+## Packages
+
+Midday has **29+ shared packages** organized in `packages/`:
+
+### Database & Storage
+
+<CardGroup cols={2}>
+  <Card title="@midday/db" icon="database">
+    Database client, schema, and queries using Drizzle ORM
+  </Card>
+  <Card title="@midday/supabase" icon="supabase">
+    Supabase client utilities for auth, storage, and realtime
+  </Card>
+  <Card title="@midday/cache" icon="clock">
+    Caching utilities and strategies
+  </Card>
+</CardGroup>
+
+### Business Logic
+
+<CardGroup cols={2}>
+  <Card title="@midday/banking" icon="building-columns">
+    Bank connection and transaction handling
+  </Card>
+  <Card title="@midday/invoice" icon="file-invoice">
+    Invoice generation and management
+  </Card>
+  <Card title="@midday/accounting" icon="calculator">
+    Accounting integration (Xero, QuickBooks, Fortnox)
+  </Card>
+  <Card title="@midday/documents" icon="folder">
+    Document processing and storage
+  </Card>
+  <Card title="@midday/inbox" icon="inbox">
+    Receipt matching and processing
+  </Card>
+  <Card title="@midday/insights" icon="chart-line">
+    Financial insights and analytics
+  </Card>
+</CardGroup>
+
+### Infrastructure
+
+<CardGroup cols={2}>
+  <Card title="@midday/jobs" icon="list-check">
+    Background job definitions
+  </Card>
+  <Card title="@midday/job-client" icon="server">
+    Job client for Trigger.dev
+  </Card>
+  <Card title="@midday/logger" icon="terminal">
+    Structured logging with Pino
+  </Card>
+  <Card title="@midday/events" icon="bell">
+    Event tracking and analytics
+  </Card>
+  <Card title="@midday/notifications" icon="envelope">
+    Notification system
+  </Card>
+</CardGroup>
+
+### Utilities
+
+<CardGroup cols={2}>
+  <Card title="@midday/utils" icon="wrench">
+    Shared utility functions
+  </Card>
+  <Card title="@midday/encryption" icon="lock">
+    Encryption utilities
+  </Card>
+  <Card title="@midday/location" icon="location-dot">
+    Geolocation services
+  </Card>
+  <Card title="@midday/categories" icon="tags">
+    Transaction categorization
+  </Card>
+</CardGroup>
+
+### UI & Components
+
+<CardGroup cols={2}>
+  <Card title="@midday/ui" icon="palette">
+    Shared UI components (Shadcn-based)
+  </Card>
+  <Card title="@midday/email" icon="at">
+    Email templates with React Email
+  </Card>
+</CardGroup>
+
+## Hosting & Infrastructure
+
+<Steps>
+  <Step title="Supabase">
+    **Services:** Database (PostgreSQL), Storage, Realtime, Auth
+    
+    All data is stored in Supabase with Row Level Security (RLS) policies for multi-tenancy.
+  </Step>
+  
+  <Step title="Railway">
+    **Deployment:** API, Worker, Dashboard
+    
+    Regional replicas for low-latency database access.
+  </Step>
+  
+  <Step title="Vercel">
+    **Deployment:** Marketing website
+    
+    Edge deployment for optimal performance.
+  </Step>
+  
+  <Step title="Cloudflare">
+    **Services:** CDN, Proxy, Edge functions
+  </Step>
+</Steps>
+
+## External Services
+
+<CardGroup cols={2}>
+  <Card title="Trigger.dev" icon="bolt">
+    Background job orchestration and scheduling
+  </Card>
+  <Card title="Resend" icon="paper-plane">
+    Transactional and marketing emails
+  </Card>
+  <Card title="GoCardless" icon="building">
+    Bank connections in EU
+  </Card>
+  <Card title="Plaid" icon="landmark">
+    Bank connections in US/Canada
+  </Card>
+  <Card title="Teller" icon="university">
+    Additional US bank connections
+  </Card>
+  <Card title="OpenPanel" icon="chart-bar">
+    Event tracking and analytics
+  </Card>
+  <Card title="Polar" icon="credit-card">
+    Payment processing
+  </Card>
+  <Card title="Typesense" icon="magnifying-glass">
+    Full-text search
+  </Card>
+  <Card title="OpenAI & Gemini" icon="brain">
+    AI capabilities
+  </Card>
+</CardGroup>
+
+## Architecture Patterns
+
+### Monorepo Structure
+
+```
+midday/
+├── apps/
+│   ├── dashboard/      # Next.js app
+│   ├── api/            # Hono API
+│   ├── website/        # Marketing site
+│   ├── desktop/        # Tauri app
+│   └── worker/         # Background jobs
+├── packages/
+│   ├── db/             # Database layer
+│   ├── ui/             # Shared components
+│   ├── banking/        # Banking logic
+│   └── .../            # 25+ more packages
+├── turbo.json          # Turbo config
+└── package.json        # Workspace config
+```
+
+### Data Flow
+
+<Steps>
+  <Step title="Client Request">
+    User interacts with Dashboard (Next.js)
+  </Step>
+  
+  <Step title="tRPC Call">
+    Dashboard makes type-safe tRPC call to API
+  </Step>
+  
+  <Step title="Business Logic">
+    API executes business logic using shared packages
+  </Step>
+  
+  <Step title="Database Query">
+    Query Supabase using Drizzle ORM with RLS
+  </Step>
+  
+  <Step title="Background Jobs">
+    Heavy tasks queued to Worker via Trigger.dev
+  </Step>
+</Steps>
+
+<Note>
+  All applications share the same TypeScript packages, ensuring consistency and reducing duplication.
+</Note>
+
+## Development Workflow
+
+### Running All Apps
+
+```bash
+# Start all apps in parallel
+bun dev
+```
+
+### Running Specific Apps
+
+```bash
+# Dashboard only
+bun dev:dashboard
+
+# API only
+bun dev:api
+
+# Website only
+bun dev:website
+```
+
+### Building for Production
+
+```bash
+# Build all apps
+bun build
+
+# Build specific app
+bun build:dashboard
+```
+
+### Code Quality
+
+```bash
+# Lint all code
+bun lint
+
+# Format code
+bun format
+
+# Type check
+bun typecheck
+
+# Run tests
+bun test
+```
+
+<Tip>
+  Use Turbo's caching to speed up builds. Turbo automatically caches outputs and skips redundant work.
+</Tip>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Database" href="/development/database" icon="database">
+    Learn about the database schema and queries
+  </Card>
+  <Card title="Monorepo" href="/development/monorepo" icon="folder-tree">
+    Understand the monorepo structure
+  </Card>
+  <Card title="Contributing" href="/development/contributing" icon="code-pull-request">
+    Start contributing to Midday
+  </Card>
+</CardGroup>

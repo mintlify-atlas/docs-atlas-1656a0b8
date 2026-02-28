@@ -1,0 +1,432 @@
+---
+title: 'Transactions'
+description: 'Transaction management API for viewing, categorizing, and exporting financial transactions'
+---
+
+The Transactions API provides endpoints for managing financial transactions, including filtering, updating, categorization, import/export, and AI-powered features.
+
+## Query Endpoints
+
+### get
+
+Retrieve a paginated list of transactions.
+
+<ParamField query="start" type="string" optional>
+  Start date filter (ISO 8601)
+</ParamField>
+
+<ParamField query="end" type="string" optional>
+  End date filter (ISO 8601)
+</ParamField>
+
+<ParamField query="bankAccountId" type="string" optional>
+  Filter by bank account UUID
+</ParamField>
+
+<ParamField query="categorySlug" type="string" optional>
+  Filter by category slug
+</ParamField>
+
+<ParamField query="q" type="string" optional>
+  Search query for transaction name/description
+</ParamField>
+
+<ParamField query="exported" type="boolean" optional>
+  Filter by export status
+</ParamField>
+
+<ParamField query="fulfilled" type="boolean" optional>
+  Filter by fulfillment status (has category and attachments)
+</ParamField>
+
+<ParamField query="attachments" type="string" optional>
+  Filter by attachment status: "include" | "exclude"
+</ParamField>
+
+<ParamField query="sort" type="array" optional>
+  Array of sort objects
+</ParamField>
+
+```typescript
+import { trpc } from '@/lib/trpc';
+
+const { data, meta } = await trpc.transactions.get.query({
+  start: '2024-01-01',
+  end: '2024-12-31',
+  bankAccountId: 'account-uuid',
+  categorySlug: 'office-supplies',
+  fulfilled: false,
+});
+```
+
+### getById
+
+Retrieve a specific transaction by ID.
+
+<ParamField query="id" type="string" required>
+  Transaction UUID
+</ParamField>
+
+<ResponseField name="transaction" type="object">
+  <Expandable title="Transaction properties">
+    <ResponseField name="id" type="string">
+      Transaction UUID
+    </ResponseField>
+    <ResponseField name="date" type="string">
+      Transaction date (ISO 8601)
+    </ResponseField>
+    <ResponseField name="name" type="string">
+      Transaction description/name
+    </ResponseField>
+    <ResponseField name="amount" type="number">
+      Transaction amount
+    </ResponseField>
+    <ResponseField name="currency" type="string">
+      Currency code
+    </ResponseField>
+    <ResponseField name="category" type="object" optional>
+      Category object if assigned
+    </ResponseField>
+    <ResponseField name="bankAccount" type="object">
+      Bank account object
+    </ResponseField>
+    <ResponseField name="attachments" type="array">
+      Array of attachment objects
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+```typescript
+const transaction = await trpc.transactions.getById.query({
+  id: 'transaction-uuid',
+});
+```
+
+### getReviewCount
+
+Get the count of transactions ready for export review.
+
+<ResponseField name="count" type="number">
+  Number of transactions ready for review
+</ResponseField>
+
+### getSimilarTransactions
+
+Find similar transactions based on name, category, and frequency.
+
+<ParamField query="name" type="string" required>
+  Transaction name to match
+</ParamField>
+
+<ParamField query="categorySlug" type="string" optional>
+  Category slug to match
+</ParamField>
+
+<ParamField query="frequency" type="string" optional>
+  Transaction frequency pattern
+</ParamField>
+
+<ParamField query="transactionId" type="string" optional>
+  Exclude this transaction ID from results
+</ParamField>
+
+<ResponseField name="transactions" type="array">
+  Array of similar transaction objects
+</ResponseField>
+
+```typescript
+const similar = await trpc.transactions.getSimilarTransactions.query({
+  name: 'Amazon',
+  categorySlug: 'office-supplies',
+});
+```
+
+### searchTransactionMatch
+
+Search for transaction matches (used for inbox matching).
+
+<ParamField query="query" type="string" required>
+  Search query
+</ParamField>
+
+<ParamField query="inboxId" type="string" optional>
+  Inbox item ID to match against
+</ParamField>
+
+<ParamField query="maxResults" type="number" optional>
+  Maximum number of results (default: 10)
+</ParamField>
+
+<ParamField query="minConfidenceScore" type="number" optional>
+  Minimum confidence score (0-1)
+</ParamField>
+
+<ParamField query="includeAlreadyMatched" type="boolean" optional>
+  Include transactions already matched to other inbox items
+</ParamField>
+
+<ResponseField name="matches" type="array">
+  Array of matching transactions with confidence scores
+</ResponseField>
+
+## Mutation Endpoints
+
+### create
+
+Create a new manual transaction.
+
+<ParamField body="bankAccountId" type="string" required>
+  Bank account UUID
+</ParamField>
+
+<ParamField body="date" type="string" required>
+  Transaction date (ISO 8601)
+</ParamField>
+
+<ParamField body="name" type="string" required>
+  Transaction description
+</ParamField>
+
+<ParamField body="amount" type="number" required>
+  Transaction amount (positive for income, negative for expenses)
+</ParamField>
+
+<ParamField body="currency" type="string" required>
+  Three-letter currency code
+</ParamField>
+
+<ParamField body="categorySlug" type="string" optional>
+  Category slug
+</ParamField>
+
+<ParamField body="note" type="string" optional>
+  Internal note
+</ParamField>
+
+```typescript
+const transaction = await trpc.transactions.create.mutate({
+  bankAccountId: 'account-uuid',
+  date: '2024-11-15',
+  name: 'Office supplies',
+  amount: -129.99,
+  currency: 'USD',
+  categorySlug: 'office-supplies',
+});
+```
+
+### update
+
+Update a transaction.
+
+<ParamField body="id" type="string" required>
+  Transaction UUID
+</ParamField>
+
+<ParamField body="categorySlug" type="string" optional>
+  New category slug (null to remove)
+</ParamField>
+
+<ParamField body="note" type="string" optional>
+  Internal note
+</ParamField>
+
+<ParamField body="assigned" type="object" optional>
+  Assigned user for the transaction
+</ParamField>
+
+```typescript
+const updated = await trpc.transactions.update.mutate({
+  id: 'transaction-uuid',
+  categorySlug: 'travel',
+  note: 'Business trip to NYC',
+});
+```
+
+### updateMany
+
+Bulk update multiple transactions.
+
+<ParamField body="ids" type="array" required>
+  Array of transaction UUIDs
+</ParamField>
+
+<ParamField body="categorySlug" type="string" optional>
+  Category to apply to all
+</ParamField>
+
+<ParamField body="note" type="string" optional>
+  Note to apply to all
+</ParamField>
+
+```typescript
+await trpc.transactions.updateMany.mutate({
+  ids: ['uuid1', 'uuid2', 'uuid3'],
+  categorySlug: 'marketing',
+});
+```
+
+### deleteMany
+
+Delete multiple transactions.
+
+<ParamField body="ids" type="array" required>
+  Array of transaction UUIDs to delete
+</ParamField>
+
+```typescript
+await trpc.transactions.deleteMany.mutate({
+  ids: ['uuid1', 'uuid2'],
+});
+```
+
+### moveToReview
+
+Move a transaction to the review queue for export.
+
+<ParamField body="transactionId" type="string" required>
+  Transaction UUID
+</ParamField>
+
+```typescript
+await trpc.transactions.moveToReview.mutate({
+  transactionId: 'transaction-uuid',
+});
+```
+
+## Import & Export
+
+### import
+
+Import transactions from a CSV file.
+
+<ParamField body="filePath" type="array" required>
+  Path tokens to the uploaded CSV file
+</ParamField>
+
+<ParamField body="bankAccountId" type="string" required>
+  Bank account UUID to import to
+</ParamField>
+
+<ParamField body="currency" type="string" required>
+  Currency code for transactions
+</ParamField>
+
+<ParamField body="mappings" type="object" required>
+  CSV column mappings
+</ParamField>
+
+<ParamField body="currentBalance" type="string" optional>
+  Current account balance (for manual accounts)
+</ParamField>
+
+<ParamField body="inverted" type="boolean" optional>
+  Whether to invert transaction amounts
+</ParamField>
+
+<ResponseField name="jobId" type="string">
+  Background job ID for tracking import progress
+</ResponseField>
+
+```typescript
+const { jobId } = await trpc.transactions.import.mutate({
+  filePath: ['uploads', 'team-id', 'transactions.csv'],
+  bankAccountId: 'account-uuid',
+  currency: 'USD',
+  mappings: {
+    date: 'Date',
+    description: 'Description',
+    amount: 'Amount',
+  },
+  inverted: false,
+});
+```
+
+### export
+
+Export transactions to CSV format.
+
+<ParamField body="transactionIds" type="array" optional>
+  Specific transaction UUIDs to export (exports all if not provided)
+</ParamField>
+
+<ParamField body="locale" type="string" required>
+  Locale for formatting (e.g., "en-US")
+</ParamField>
+
+<ParamField body="dateFormat" type="string" required>
+  Date format string (e.g., "yyyy-MM-dd")
+</ParamField>
+
+<ParamField body="exportSettings" type="object" required>
+  Export configuration
+</ParamField>
+
+<ResponseField name="jobId" type="string">
+  Background job ID - file will be emailed when ready
+</ResponseField>
+
+```typescript
+const { jobId } = await trpc.transactions.export.mutate({
+  locale: 'en-US',
+  dateFormat: 'MM/dd/yyyy',
+  exportSettings: {
+    includeAttachments: true,
+    columns: ['date', 'description', 'amount', 'category'],
+  },
+});
+```
+
+## AI Features
+
+### generateCsvMapping
+
+Use AI to automatically detect CSV column mappings for import.
+
+<ParamField body="fieldColumns" type="array" required>
+  Array of column names from the CSV file
+</ParamField>
+
+<ParamField body="firstRows" type="array" required>
+  Sample data rows from the CSV (first 5-10 rows)
+</ParamField>
+
+<ResponseField name="mappings" type="object">
+  <Expandable title="Detected mappings">
+    <ResponseField name="date" type="string" optional>
+      Column name for date field
+    </ResponseField>
+    <ResponseField name="description" type="string" optional>
+      Column name for description field
+    </ResponseField>
+    <ResponseField name="counterparty" type="string" optional>
+      Column name for counterparty/merchant field
+    </ResponseField>
+    <ResponseField name="amount" type="string" optional>
+      Column name for amount field
+    </ResponseField>
+    <ResponseField name="balance" type="string" optional>
+      Column name for balance field
+    </ResponseField>
+    <ResponseField name="currency" type="string" optional>
+      Column name for currency field
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+```typescript
+const mappings = await trpc.transactions.generateCsvMapping.mutate({
+  fieldColumns: ['Date', 'Merchant', 'Amount', 'Balance'],
+  firstRows: [
+    ['2024-01-15', 'Amazon', '-29.99', '1000.00'],
+    ['2024-01-16', 'Starbucks', '-5.50', '994.50'],
+  ],
+});
+
+// Use detected mappings for import
+console.log(mappings);
+// { date: 'Date', counterparty: 'Merchant', amount: 'Amount', balance: 'Balance' }
+```
+
+<Note>
+The AI mapping uses Claude 3 Haiku and intelligently detects column purposes based on headers and sample data. Results are cached to avoid duplicate API calls.
+</Note>

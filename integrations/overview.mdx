@@ -1,0 +1,88 @@
+---
+title: "Integrations Overview"
+description: "Connect Midday with banks and apps to automate your financial workflows"
+---
+
+Midday integrates with banking providers and business apps to streamline your financial operations. Connect your bank accounts to automatically sync transactions, and integrate with communication tools to capture receipts on the go.
+
+## Banking Integrations
+
+Connect your bank accounts to automatically sync transactions, balances, and account details.
+
+<CardGroup cols={3}>
+  <Card title="GoCardless" icon="building-columns" href="/integrations/banking#gocardless">
+    Open Banking for European accounts
+  </Card>
+  <Card title="Plaid" icon="link" href="/integrations/banking#plaid">
+    US and Canadian banking connections
+  </Card>
+  <Card title="Teller" icon="circle-dollar-to-slot" href="/integrations/banking#teller">
+    Modern US banking API
+  </Card>
+</CardGroup>
+
+### Supported Features
+
+- **Automatic Transaction Sync** - New transactions are synced via webhooks
+- **Account Balances** - Real-time balance updates
+- **Multi-Account Support** - Connect multiple accounts per institution
+- **Connection Health Monitoring** - Automatic status checks and reconnection prompts
+
+## App Integrations
+
+Connect business apps to capture receipts, receive notifications, and export data.
+
+<CardGroup cols={3}>
+  <Card title="Slack" icon="slack" href="/integrations/apps#slack">
+    Transaction notifications and receipt uploads
+  </Card>
+  <Card title="WhatsApp" icon="whatsapp" href="/integrations/apps#whatsapp">
+    Forward receipts from your phone
+  </Card>
+  <Card title="Fortnox" icon="file-invoice" href="/integrations/apps#fortnox">
+    Swedish accounting export (Beta)
+  </Card>
+</CardGroup>
+
+### Capture Category
+
+**Slack** and **WhatsApp** help you capture receipts and invoices:
+- Upload documents directly from conversations
+- Automatic data extraction (amount, date, vendor)
+- Smart matching to transactions
+- Approve or decline matches with one click
+
+### Accounting Category
+
+**Fortnox** helps you export data to accounting systems:
+- Export enriched transactions as vouchers
+- Automatic receipt attachments
+- Swedish BAS account mapping
+
+## Webhooks
+
+Midday provides webhook endpoints to receive real-time events from integrated services.
+
+<Card title="Webhooks" icon="webhook" href="/integrations/webhooks">
+  Set up webhook endpoints for banking and app events
+</Card>
+
+### Available Webhooks
+
+- **Plaid** - Transaction updates and connection status changes
+- **Teller** - Transaction processed and enrollment disconnected events
+- **WhatsApp** - Message and media events
+- **Inbox** - Email processing events
+
+## Integration Architecture
+
+Midday's integration layer is built with:
+
+- **Unified Banking API** - Single interface for all banking providers (`~/workspace/source/packages/banking/`)
+- **App Store System** - Standardized config for all app integrations (`~/workspace/source/packages/app-store/`)
+- **Webhook Security** - Signature verification for all webhooks
+- **Error Handling** - Automatic retries and detailed error logging
+
+<Note>
+  All integrations require proper environment variables to be configured. See individual integration pages for setup instructions.
+</Note>

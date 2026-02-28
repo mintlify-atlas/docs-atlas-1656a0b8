@@ -1,0 +1,344 @@
+---
+title: 'Documents'
+description: 'Document management API for uploading, processing, and organizing files'
+---
+
+The Documents API provides endpoints for managing documents in the vault, including upload, processing, tagging, and retrieval.
+
+## Query Endpoints
+
+### get
+
+Retrieve a paginated list of documents.
+
+<ParamField query="q" type="string" optional>
+  Search query for document name or content
+</ParamField>
+
+<ParamField query="tag" type="string" optional>
+  Filter by tag name
+</ParamField>
+
+<ParamField query="start" type="string" optional>
+  Start date filter (ISO 8601)
+</ParamField>
+
+<ParamField query="end" type="string" optional>
+  End date filter (ISO 8601)
+</ParamField>
+
+<ParamField query="sort" type="array" optional>
+  Array of sort objects
+</ParamField>
+
+<ParamField query="limit" type="number" optional>
+  Number of results per page
+</ParamField>
+
+```typescript
+import { trpc } from '@/lib/trpc';
+
+const { data, meta } = await trpc.documents.get.query({
+  tag: 'receipts',
+  start: '2024-01-01',
+  end: '2024-12-31',
+});
+```
+
+### getById
+
+Retrieve a specific document by ID or file path.
+
+<ParamField query="id" type="string" optional>
+  Document UUID
+</ParamField>
+
+<ParamField query="filePath" type="array" optional>
+  Array of path tokens (alternative to id)
+</ParamField>
+
+<ResponseField name="document" type="object">
+  <Expandable title="Document properties">
+    <ResponseField name="id" type="string">
+      Document UUID
+    </ResponseField>
+    <ResponseField name="name" type="string">
+      Document filename
+    </ResponseField>
+    <ResponseField name="pathTokens" type="array">
+      Array of path segments
+    </ResponseField>
+    <ResponseField name="size" type="number">
+      File size in bytes
+    </ResponseField>
+    <ResponseField name="metadata" type="object">
+      File metadata including mimetype
+    </ResponseField>
+    <ResponseField name="processingStatus" type="string">
+      "pending" | "processing" | "completed" | "failed"
+    </ResponseField>
+    <ResponseField name="tags" type="array">
+      Array of tag objects
+    </ResponseField>
+    <ResponseField name="createdAt" type="string">
+      ISO 8601 timestamp
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+```typescript
+const document = await trpc.documents.getById.query({
+  id: 'document-uuid',
+});
+
+// Or by file path
+const document = await trpc.documents.getById.query({
+  filePath: ['vault', 'team-id', 'receipt.pdf'],
+});
+```
+
+### getRelatedDocuments
+
+Get documents related to a specific document (based on tags, date, etc.).
+
+<ParamField query="id" type="string" required>
+  Document UUID
+</ParamField>
+
+<ParamField query="pageSize" type="number" optional>
+  Number of results to return
+</ParamField>
+
+<ResponseField name="documents" type="array">
+  Array of related document objects
+</ResponseField>
+
+```typescript
+const related = await trpc.documents.getRelatedDocuments.query({
+  id: 'document-uuid',
+  pageSize: 5,
+});
+```
+
+### checkAttachments
+
+Check if a document is attached to any transactions or invoices.
+
+<ParamField query="id" type="string" required>
+  Document UUID
+</ParamField>
+
+<ResponseField name="data" type="object">
+  <Expandable title="properties">
+    <ResponseField name="hasAttachments" type="boolean">
+      Whether the document has attachments
+    </ResponseField>
+    <ResponseField name="transactionCount" type="number">
+      Number of linked transactions
+    </ResponseField>
+    <ResponseField name="invoiceCount" type="number">
+      Number of linked invoices
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+```typescript
+const { hasAttachments, transactionCount } = await trpc.documents.checkAttachments.query({
+  id: 'document-uuid',
+});
+
+if (hasAttachments) {
+  console.log(`Document is attached to ${transactionCount} transactions`);
+}
+```
+
+## Mutation Endpoints
+
+### delete
+
+Delete a document from the vault.
+
+<ParamField body="id" type="string" required>
+  Document UUID
+</ParamField>
+
+<ResponseField name="document" type="object">
+  The deleted document object
+</ResponseField>
+
+```typescript
+await trpc.documents.delete.mutate({
+  id: 'document-uuid',
+});
+```
+
+<Warning>
+Deleting a document also removes it from storage. This action cannot be undone.
+</Warning>
+
+### processDocument
+
+Trigger processing for uploaded documents (OCR, text extraction).
+
+<ParamField body="documents" type="array" required>
+  Array of document objects to process
+</ParamField>
+
+<CodeGroup>
+```typescript Document structure
+type DocumentToProcess = {
+  filePath: string[];  // Path tokens in storage
+  mimetype: string;    // MIME type (e.g., 'application/pdf')
+};
+```
+</CodeGroup>
+
+<ResponseField name="data" type="object">
+  <Expandable title="properties">
+    <ResponseField name="jobs" type="array">
+      Array of job objects with IDs for tracking
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+```typescript
+const result = await trpc.documents.processDocument.mutate([
+  {
+    filePath: ['vault', 'team-id', 'invoice-001.pdf'],
+    mimetype: 'application/pdf',
+  },
+  {
+    filePath: ['vault', 'team-id', 'receipt-002.jpg'],
+    mimetype: 'image/jpeg',
+  },
+]);
+
+console.log('Processing jobs:', result.jobs);
+```
+
+<Note>
+Supported file types for processing: PDF, images (JPEG, PNG), and text files. Other file types will be marked as completed without processing.
+</Note>
+
+### reprocessDocument
+
+Reprocess a document that failed or needs updating.
+
+<ParamField body="id" type="string" required>
+  Document UUID
+</ParamField>
+
+<ResponseField name="data" type="object">
+  <Expandable title="properties">
+    <ResponseField name="success" type="boolean">
+      Whether reprocessing was queued
+    </ResponseField>
+    <ResponseField name="skipped" type="boolean" optional>
+      True if document type is not supported
+    </ResponseField>
+    <ResponseField name="jobId" type="string" optional>
+      Job ID for tracking progress
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+```typescript
+const result = await trpc.documents.reprocessDocument.mutate({
+  id: 'document-uuid',
+});
+
+if (result.success) {
+  console.log('Reprocessing job ID:', result.jobId);
+}
+```
+
+## Signed URLs
+
+### signedUrl
+
+Generate a temporary signed URL for downloading a document.
+
+<ParamField body="filePath" type="array" required>
+  Array of path tokens
+</ParamField>
+
+<ParamField body="expireIn" type="number" optional>
+  Expiration time in seconds (default: 60)
+</ParamField>
+
+<ResponseField name="signedUrl" type="string">
+  Temporary URL for downloading the file
+</ResponseField>
+
+```typescript
+const { signedUrl } = await trpc.documents.signedUrl.mutate({
+  filePath: ['vault', 'team-id', 'receipt.pdf'],
+  expireIn: 300, // 5 minutes
+});
+
+// Use the signed URL to download or display the file
+window.open(signedUrl);
+```
+
+### signedUrls
+
+Generate multiple signed URLs at once.
+
+<ParamField body="filePaths" type="array" required>
+  Array of file path arrays
+</ParamField>
+
+<ResponseField name="urls" type="array">
+  Array of signed URLs (same order as input)
+</ResponseField>
+
+```typescript
+const urls = await trpc.documents.signedUrls.mutate([
+  ['vault', 'team-id', 'file1.pdf'],
+  ['vault', 'team-id', 'file2.jpg'],
+  ['vault', 'team-id', 'file3.png'],
+]);
+
+// urls is an array of signed URL strings
+urls.forEach((url, index) => {
+  console.log(`File ${index + 1}: ${url}`);
+});
+```
+
+## Document Processing
+
+The document processing system automatically extracts text and metadata from uploaded files.
+
+### Processing Flow
+
+1. **Upload** - Files are uploaded to Supabase storage
+2. **Queue** - Call `processDocument` to queue processing jobs
+3. **Process** - Background workers extract text using OCR/parsers
+4. **Complete** - Document status changes to "completed"
+
+### Supported File Types
+
+- **PDF** - Text extraction and OCR for scanned PDFs
+- **Images** - JPEG, PNG (OCR applied)
+- **Text** - Plain text files
+
+### Example: Upload and Process
+
+```typescript
+// 1. Upload file to storage
+const filePath = await uploadToStorage(file);
+
+// 2. Queue processing
+const result = await trpc.documents.processDocument.mutate([{
+  filePath,
+  mimetype: file.type,
+}]);
+
+// 3. Monitor status
+const document = await trpc.documents.getById.query({ filePath });
+console.log('Processing status:', document.processingStatus);
+```
+
+## Tagging
+
+Documents can be organized using tags. See the [Document Tags API](/api/document-tags) for managing tags and assignments.

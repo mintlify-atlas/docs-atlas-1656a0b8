@@ -1,0 +1,577 @@
+---
+title: Installation
+description: Set up Midday locally for development or self-hosting
+---
+
+# Installation Guide
+
+This guide will walk you through setting up Midday locally for development or self-hosting. Midday is a monorepo built with modern tools and requires several services to run.
+
+<Warning>
+  This installation guide is for developers and self-hosters. If you just want to use Midday, sign up at [midday.ai](https://midday.ai) instead.
+</Warning>
+
+## Prerequisites
+
+Before you begin, ensure you have the following installed:
+
+### Required Tools
+
+<CardGroup cols={2}>
+  <Card title="Bun" icon="rabbit-running">
+    Version 1.3.10 or higher
+    ```bash
+    curl -fsSL https://bun.sh/install | bash
+    ```
+  </Card>
+  <Card title="Node.js" icon="node-js">
+    Version 20 or higher (for some dependencies)
+    ```bash
+    # via nvm
+    nvm install 20
+    ```
+  </Card>
+  <Card title="Git" icon="git">
+    For cloning the repository
+    ```bash
+    git --version
+    ```
+  </Card>
+  <Card title="Docker" icon="docker">
+    For running Supabase locally
+    ```bash
+    docker --version
+    ```
+  </Card>
+</CardGroup>
+
+### System Requirements
+
+- **RAM**: 8GB minimum, 16GB recommended
+- **Storage**: 10GB free space
+- **OS**: macOS, Linux, or Windows (with WSL2)
+
+## Clone the Repository
+
+<Steps>
+  <Step title="Clone from GitHub">
+    ```bash
+    git clone https://github.com/midday-ai/midday.git
+    cd midday
+    ```
+  </Step>
+
+  <Step title="Install Dependencies">
+    Midday uses Bun for package management:
+
+    ```bash
+    bun install
+    ```
+
+    This will install all dependencies across the monorepo, including:
+    - Next.js 16 with React 19
+    - Supabase client libraries
+    - tRPC for type-safe APIs
+    - Tauri for desktop apps
+    - All shared packages
+
+    <Info>
+      The monorepo uses Bun workspaces. Dependencies in `apps/*` and `packages/*` are automatically linked.
+    </Info>
+  </Step>
+</Steps>
+
+## Set Up Environment Variables
+
+Midday requires several environment variables for different services.
+
+<Steps>
+  <Step title="Dashboard Environment Variables">
+    Copy the example environment file for the dashboard:
+
+    ```bash
+    cd apps/dashboard
+    cp .env-example .env
+    ```
+
+    The `.env` file contains configuration for:
+
+    <CodeGroup>
+    ```bash Supabase (Required)
+    # Supabase - Database, Auth, Storage, Realtime
+    NEXT_PUBLIC_SUPABASE_URL=http://localhost:54321
+    NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key_here
+    NEXT_PUBLIC_SUPABASE_ID=your_project_id
+    SUPABASE_SERVICE_KEY=your_service_key_here
+    
+    # Application URLs
+    NEXT_PUBLIC_URL=http://localhost:3001
+    NEXT_PUBLIC_API_URL=http://localhost:3003
+    ```
+
+    ```bash Banking Providers (Optional)
+    # Plaid - US/Canada banks
+    PLAID_CLIENT_ID=your_plaid_client_id
+    PLAID_SECRET=your_plaid_secret
+    NEXT_PUBLIC_PLAID_ENVIRONMENT=sandbox
+    
+    # Teller - US banks
+    TELLER_CERTIFICATE=base64_encoded_cert
+    TELLER_CERTIFICATE_PRIVATE_KEY=base64_encoded_key
+    NEXT_PUBLIC_TELLER_APPLICATION_ID=your_app_id
+    NEXT_PUBLIC_TELLER_ENVIRONMENT=sandbox
+    TELLER_SIGNING_SECRET=your_signing_secret
+    
+    # GoCardLess - European banks
+    # (Configured via their dashboard)
+    ```
+
+    ```bash Email & Storage (Optional)
+    # Resend - Transactional emails
+    RESEND_API_KEY=your_resend_key
+    RESEND_AUDIENCE_ID=your_audience_id
+    
+    # Redis - Caching (Upstash or local)
+    REDIS_URL=redis://localhost:6379
+    ```
+
+    ```bash AI & Processing (Optional)
+    # OpenAI - AI Assistant
+    OPENAI_API_KEY=your_openai_key
+    
+    # Azure Document Intelligence - Receipt OCR
+    AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT=your_endpoint
+    AZURE_DOCUMENT_INTELLIGENCE_KEY=your_key
+    
+    # Google Maps - Location services
+    NEXT_PUBLIC_GOOGLE_API_KEY=your_google_key
+    ```
+
+    ```bash Security & Analytics (Required)
+    # Invoice JWT Secret
+    INVOICE_JWT_SECRET=your_random_secret_here
+    
+    # File Encryption Key
+    FILE_KEY_SECRET=your_file_encryption_secret
+    
+    # Next.js Server Actions Encryption
+    # Generate with: openssl rand -base64 32
+    NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=your_base64_key
+    
+    # Webhook Verification
+    WEBHOOK_SECRET_KEY=your_webhook_secret
+    ```
+    </CodeGroup>
+
+    <Note>
+      For local development, you only need Supabase variables. Banking providers, AI, and other services can be added later.
+    </Note>
+  </Step>
+
+  <Step title="Generate Encryption Keys">
+    Generate secure keys for your environment:
+
+    ```bash
+    # Server Actions Encryption Key (32 bytes, base64)
+    openssl rand -base64 32
+    
+    # Invoice JWT Secret (any random string)
+    openssl rand -hex 32
+    
+    # File Encryption Secret (any random string)
+    openssl rand -hex 32
+    
+    # Webhook Secret (UUID format)
+    uuidgen
+    ```
+
+    Add these to your `.env` file.
+  </Step>
+
+  <Step title="API Environment Variables">
+    Set up the API service:
+
+    ```bash
+    cd ../api
+    cp .env-template .env
+    ```
+
+    The API requires:
+    - Supabase credentials
+    - Banking provider credentials
+    - Redis URL
+  </Step>
+</Steps>
+
+## Set Up Supabase
+
+Midday uses Supabase for database, authentication, storage, and real-time features.
+
+<Steps>
+  <Step title="Option 1: Use Supabase Cloud (Recommended for Development)">
+    1. Sign up at [supabase.com](https://supabase.com)
+    2. Create a new project
+    3. Go to Settings → API to get your keys:
+       - Project URL
+       - Anon (public) key
+       - Service role key
+    4. Add these to your `.env` file
+
+    <Info>
+      Supabase Cloud has a generous free tier perfect for development.
+    </Info>
+  </Step>
+
+  <Step title="Option 2: Run Supabase Locally">
+    Install Supabase CLI and run locally:
+
+    ```bash
+    # Install Supabase CLI
+    brew install supabase/tap/supabase
+    
+    # Start Supabase (requires Docker)
+    supabase start
+    ```
+
+    This will start:
+    - PostgreSQL database (port 54322)
+    - PostgREST API (port 54321)
+    - Auth server (port 54324)
+    - Storage server (port 54325)
+    - Realtime server (port 54326)
+    - Supabase Studio (port 54323)
+
+    The CLI will output connection details. Add them to your `.env`:
+
+    ```bash
+    NEXT_PUBLIC_SUPABASE_URL=http://localhost:54321
+    NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon_key_from_output>
+    SUPABASE_SERVICE_KEY=<service_key_from_output>
+    ```
+  </Step>
+
+  <Step title="Run Database Migrations">
+    Apply the database schema:
+
+    ```bash
+    # If using Supabase Cloud
+    supabase link --project-ref your-project-ref
+    supabase db push
+    
+    # If using Supabase locally
+    # Migrations are auto-applied on start
+    ```
+
+    This creates all necessary tables:
+    - `users` - User accounts
+    - `teams` - Team/business information
+    - `bank_accounts` - Connected bank accounts
+    - `transactions` - Financial transactions
+    - `invoices` - Invoice data
+    - `customers` - Client information
+    - And many more...
+  </Step>
+</Steps>
+
+## Set Up Banking Providers (Optional)
+
+To enable bank connections, you need credentials from banking providers.
+
+<Steps>
+  <Step title="Plaid (US & Canada)">
+    1. Sign up at [plaid.com](https://plaid.com)
+    2. Create an application in sandbox mode
+    3. Get your Client ID and Secret
+    4. Add to `.env`:
+
+    ```bash
+    PLAID_CLIENT_ID=your_client_id
+    PLAID_SECRET=your_sandbox_secret
+    NEXT_PUBLIC_PLAID_ENVIRONMENT=sandbox
+    ```
+
+    <Note>
+      Plaid's sandbox mode allows testing with fake bank credentials without connecting real banks.
+    </Note>
+  </Step>
+
+  <Step title="Teller (US)">
+    1. Sign up at [teller.io](https://teller.io)
+    2. Generate a certificate for authentication
+    3. Base64 encode your certificate and private key
+    4. Add to `.env`:
+
+    ```bash
+    TELLER_CERTIFICATE=base64_encoded_certificate
+    TELLER_CERTIFICATE_PRIVATE_KEY=base64_encoded_key
+    NEXT_PUBLIC_TELLER_APPLICATION_ID=your_app_id
+    NEXT_PUBLIC_TELLER_ENVIRONMENT=sandbox
+    ```
+  </Step>
+
+  <Step title="GoCardLess (Europe)">
+    1. Sign up at [gocardless.com](https://gocardless.com)
+    2. Access the Bank Account Data product
+    3. Get your Secret ID and Secret Key
+    4. Configure in Supabase (stored encrypted in database)
+
+    <Info>
+      GoCardLess credentials are stored in the database, not environment variables, for security.
+    </Info>
+  </Step>
+</Steps>
+
+## Run the Development Servers
+
+Now you're ready to run Midday locally!
+
+<Steps>
+  <Step title="Start All Services">
+    From the root directory, start all services:
+
+    ```bash
+    bun run dev
+    ```
+
+    This starts:
+    - **Dashboard** - http://localhost:3001 (Main app)
+    - **API** - http://localhost:3003 (Backend)
+    - **Worker** - Background job processor
+    - **Website** - http://localhost:3000 (Marketing site)
+  </Step>
+
+  <Step title="Or Start Individual Services">
+    You can also start services individually:
+
+    ```bash
+    # Dashboard only (most common for development)
+    bun run dev:dashboard
+    
+    # API only
+    bun run dev:api
+    
+    # Desktop app (Tauri)
+    bun run dev:desktop
+    
+    # Website
+    bun run dev:website
+    ```
+  </Step>
+
+  <Step title="Access the Application">
+    Open your browser and navigate to:
+
+    - **Dashboard**: [http://localhost:3001](http://localhost:3001)
+    - **Supabase Studio**: [http://localhost:54323](http://localhost:54323) (if running locally)
+
+    Create an account to get started!
+  </Step>
+</Steps>
+
+## Verify Installation
+
+<Steps>
+  <Step title="Check Service Health">
+    Verify all services are running:
+
+    ```bash
+    # Check dashboard
+    curl http://localhost:3001
+    
+    # Check API
+    curl http://localhost:3003/health
+    
+    # Check Supabase
+    curl http://localhost:54321/rest/v1/
+    ```
+  </Step>
+
+  <Step title="Create Test Account">
+    1. Navigate to http://localhost:3001
+    2. Click "Sign Up"
+    3. Enter your email and password
+    4. Complete the onboarding flow
+
+    <Info>
+      In development, email verification is disabled by default. Check your Supabase project settings to enable it.
+    </Info>
+  </Step>
+
+  <Step title="Test Key Features">
+    Verify the installation by testing:
+
+    - ✅ Sign up and login
+    - ✅ Complete onboarding
+    - ✅ Navigate between pages
+    - ✅ Create a draft invoice
+    - ✅ Upload a file to vault
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Port already in use">
+    If ports 3001 or 3003 are already in use:
+
+    ```bash
+    # Find process using port
+    lsof -i :3001
+    
+    # Kill the process
+    kill -9 <PID>
+    
+    # Or change the port in package.json
+    "dev": "next dev -p 3002"
+    ```
+  </Accordion>
+
+  <Accordion title="Supabase connection error">
+    If you can't connect to Supabase:
+
+    1. Verify Docker is running: `docker ps`
+    2. Check Supabase is started: `supabase status`
+    3. Verify environment variables are correct
+    4. Check firewall isn't blocking ports 54321-54326
+  </Accordion>
+
+  <Accordion title="Banking provider errors">
+    If bank connections aren't working:
+
+    1. Verify you're using sandbox/test credentials
+    2. Check provider status pages:
+       - [Plaid Status](https://status.plaid.com)
+       - [Teller Status](https://status.teller.io)
+    3. Ensure environment variables are properly set
+    4. Check API logs for detailed errors
+  </Accordion>
+
+  <Accordion title="Build errors">
+    If you encounter build errors:
+
+    ```bash
+    # Clean all build artifacts
+    bun run clean:workspaces
+    
+    # Remove node_modules
+    bun run clean
+    
+    # Reinstall dependencies
+    bun install
+    
+    # Try building again
+    bun run build
+    ```
+  </Accordion>
+
+  <Accordion title="TypeScript errors">
+    If you see TypeScript errors:
+
+    ```bash
+    # Run type checking
+    bun run typecheck
+    
+    # Fix common issues
+    bun run lint:fix
+    
+    # Regenerate Supabase types
+    supabase gen types typescript --local > packages/supabase/src/types.ts
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Build for Production
+
+To build Midday for production:
+
+<CodeGroup>
+```bash Build All
+# Build all apps and packages
+bun run build
+```
+
+```bash Build Dashboard
+# Build dashboard only
+bun run build:dashboard
+
+# Start production server
+bun run start:dashboard
+```
+
+```bash Build Desktop App
+# Build Tauri desktop app
+cd apps/desktop
+bun run tauri build
+
+# Outputs:
+# - macOS: .app and .dmg
+# - Windows: .exe and .msi  
+# - Linux: .AppImage and .deb
+```
+</CodeGroup>
+
+## Next Steps
+
+Now that Midday is running locally:
+
+<CardGroup cols={2}>
+  <Card title="Architecture" icon="diagram-project" href="/architecture">
+    Learn about the monorepo structure and how packages work together
+  </Card>
+  <Card title="API Reference" icon="code" href="/api-reference">
+    Explore the tRPC API and learn how to add new endpoints
+  </Card>
+  <Card title="Database Schema" icon="database" href="/database">
+    Understand the Supabase database schema and relationships
+  </Card>
+  <Card title="Contributing" icon="code-pull-request" href="/contributing">
+    Learn how to contribute to Midday
+  </Card>
+</CardGroup>
+
+<Warning>
+  **Self-Hosting License**: Midday is AGPL-3.0 for non-commercial use. If you're deploying for commercial purposes, contact [engineer@midday.ai](mailto:engineer@midday.ai) for a commercial license.
+</Warning>
+
+## Development Tips
+
+### Useful Commands
+
+```bash
+# Run tests
+bun test
+
+# Lint code
+bun run lint
+
+# Format code
+bun run format
+
+# Type check
+bun run typecheck
+
+# Clean everything
+bun run clean && bun run clean:workspaces
+```
+
+### Monorepo Structure
+
+```typescript
+// Import from workspace packages
+import { Provider } from "@midday/banking";
+import { createClient } from "@midday/supabase/client";
+import { Button } from "@midday/ui/button";
+
+// All packages are linked automatically via Bun workspaces
+```
+
+### Hot Reload
+
+Next.js and Turbopack provide instant hot reload:
+- Edit any file in `apps/dashboard/src`
+- Changes appear immediately in the browser
+- No manual restart needed
+
+<Info>
+  Need help? Join our community or open an issue on [GitHub](https://github.com/midday-ai/midday/issues).
+</Info>

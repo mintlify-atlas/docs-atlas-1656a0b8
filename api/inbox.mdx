@@ -1,0 +1,473 @@
+---
+title: 'Inbox'
+description: 'Inbox API for managing email attachments, document matching, and automated processing'
+---
+
+The Inbox API manages incoming documents and email attachments, with AI-powered matching to transactions and invoices.
+
+## Query Endpoints
+
+### get
+
+Retrieve a paginated list of inbox items.
+
+<ParamField query="q" type="string" optional>
+  Search query for filename or content
+</ParamField>
+
+<ParamField query="status" type="string" optional>
+  Filter by status: "processing" | "pending" | "matched" | "archived"
+</ParamField>
+
+<ParamField query="sort" type="array" optional>
+  Array of sort objects
+</ParamField>
+
+<ParamField query="limit" type="number" optional>
+  Number of results per page
+</ParamField>
+
+```typescript
+import { trpc } from '@/lib/trpc';
+
+const { data, meta } = await trpc.inbox.get.query({
+  status: 'pending',
+  limit: 20,
+});
+```
+
+### getById
+
+Retrieve a specific inbox item by ID.
+
+<ParamField query="id" type="string" required>
+  Inbox item UUID
+</ParamField>
+
+<ResponseField name="item" type="object">
+  <Expandable title="Inbox item properties">
+    <ResponseField name="id" type="string">
+      Inbox item UUID
+    </ResponseField>
+    <ResponseField name="displayName" type="string">
+      Display name/filename
+    </ResponseField>
+    <ResponseField name="fileName" type="string">
+      Original filename
+    </ResponseField>
+    <ResponseField name="filePath" type="array">
+      Storage path tokens
+    </ResponseField>
+    <ResponseField name="contentType" type="string">
+      MIME type
+    </ResponseField>
+    <ResponseField name="size" type="number">
+      File size in bytes
+    </ResponseField>
+    <ResponseField name="status" type="string">
+      Processing status
+    </ResponseField>
+    <ResponseField name="transactionId" type="string" optional>
+      Matched transaction UUID
+    </ResponseField>
+    <ResponseField name="website" type="string" optional>
+      Extracted website/merchant
+    </ResponseField>
+    <ResponseField name="senderEmail" type="string" optional>
+      Sender email address
+    </ResponseField>
+    <ResponseField name="suggestedMatches" type="array" optional>
+      Array of AI-suggested transaction matches
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+```typescript
+const item = await trpc.inbox.getById.query({
+  id: 'inbox-uuid',
+});
+```
+
+### getByStatus
+
+Get inbox items filtered by status.
+
+<ParamField query="status" type="string" required>
+  Status to filter by
+</ParamField>
+
+<ResponseField name="items" type="array">
+  Array of inbox item objects
+</ResponseField>
+
+```typescript
+const pending = await trpc.inbox.getByStatus.query({
+  status: 'pending',
+});
+```
+
+### search
+
+Search inbox items (for transaction matching).
+
+<ParamField query="q" type="string" required>
+  Search query
+</ParamField>
+
+<ParamField query="transactionId" type="string" optional>
+  Transaction UUID to match against
+</ParamField>
+
+<ParamField query="limit" type="number" optional>
+  Maximum number of results (default: 10)
+</ParamField>
+
+<ResponseField name="results" type="array">
+  Array of matching inbox items
+</ResponseField>
+
+```typescript
+const results = await trpc.inbox.search.query({
+  q: 'amazon receipt',
+  limit: 5,
+});
+```
+
+### checkAttachments
+
+Check if an inbox item is attached to transactions/invoices.
+
+<ParamField query="id" type="string" required>
+  Inbox item UUID
+</ParamField>
+
+<ResponseField name="data" type="object">
+  <Expandable title="properties">
+    <ResponseField name="hasAttachments" type="boolean">
+      Whether the item has attachments
+    </ResponseField>
+    <ResponseField name="count" type="number">
+      Number of attachments
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Mutation Endpoints
+
+### create
+
+Create a new inbox item (after file upload).
+
+<ParamField body="filename" type="string" required>
+  Original filename
+</ParamField>
+
+<ParamField body="filePath" type="array" required>
+  Storage path tokens
+</ParamField>
+
+<ParamField body="mimetype" type="string" required>
+  MIME type
+</ParamField>
+
+<ParamField body="size" type="number" required>
+  File size in bytes
+</ParamField>
+
+<ResponseField name="item" type="object">
+  Created inbox item
+</ResponseField>
+
+```typescript
+const item = await trpc.inbox.create.mutate({
+  filename: 'receipt.pdf',
+  filePath: ['inbox', 'team-id', 'receipt.pdf'],
+  mimetype: 'application/pdf',
+  size: 102400,
+});
+```
+
+### processAttachments
+
+Trigger processing for uploaded attachments.
+
+<ParamField body="attachments" type="array" required>
+  Array of attachment objects to process
+</ParamField>
+
+<CodeGroup>
+```typescript Attachment structure
+type Attachment = {
+  filePath: string[];      // Storage path
+  mimetype: string;        // MIME type
+  size: number;            // File size
+  referenceId?: string;    // Email reference ID
+  website?: string;        // Extracted website
+  senderEmail?: string;    // Sender email
+  inboxAccountId?: string; // Inbox account UUID
+};
+```
+</CodeGroup>
+
+<ResponseField name="data" type="object">
+  <Expandable title="properties">
+    <ResponseField name="jobs" type="array">
+      Array of processing job objects
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+```typescript
+const result = await trpc.inbox.processAttachments.mutate([
+  {
+    filePath: ['inbox', 'team-id', 'receipt.pdf'],
+    mimetype: 'application/pdf',
+    size: 102400,
+    senderEmail: 'vendor@example.com',
+    inboxAccountId: 'account-uuid',
+  },
+]);
+
+console.log('Processing jobs:', result.jobs);
+```
+
+### update
+
+Update an inbox item.
+
+<ParamField body="id" type="string" required>
+  Inbox item UUID
+</ParamField>
+
+<ParamField body="displayName" type="string" optional>
+  New display name
+</ParamField>
+
+<ParamField body="status" type="string" optional>
+  New status
+</ParamField>
+
+```typescript
+await trpc.inbox.update.mutate({
+  id: 'inbox-uuid',
+  displayName: 'Amazon Receipt - Nov 2024',
+  status: 'archived',
+});
+```
+
+### delete
+
+Delete an inbox item and its file.
+
+<ParamField body="id" type="string" required>
+  Inbox item UUID
+</ParamField>
+
+```typescript
+await trpc.inbox.delete.mutate({
+  id: 'inbox-uuid',
+});
+```
+
+### deleteMany
+
+Delete multiple inbox items at once.
+
+<ParamField body="ids" type="array" required>
+  Array of inbox item UUIDs
+</ParamField>
+
+```typescript
+await trpc.inbox.deleteMany.mutate({
+  ids: ['uuid1', 'uuid2', 'uuid3'],
+});
+```
+
+## Transaction Matching
+
+### matchTransaction
+
+Manually match an inbox item to a transaction.
+
+<ParamField body="id" type="string" required>
+  Inbox item UUID
+</ParamField>
+
+<ParamField body="transactionId" type="string" required>
+  Transaction UUID to match
+</ParamField>
+
+<ResponseField name="data" type="object">
+  Updated inbox item with transaction link
+</ResponseField>
+
+```typescript
+await trpc.inbox.matchTransaction.mutate({
+  id: 'inbox-uuid',
+  transactionId: 'transaction-uuid',
+});
+```
+
+### unmatchTransaction
+
+Remove transaction match from an inbox item.
+
+<ParamField body="id" type="string" required>
+  Inbox item UUID
+</ParamField>
+
+```typescript
+await trpc.inbox.unmatchTransaction.mutate({
+  id: 'inbox-uuid',
+});
+```
+
+### confirmMatch
+
+Confirm an AI-suggested transaction match.
+
+<ParamField body="suggestionId" type="string" required>
+  Suggestion UUID
+</ParamField>
+
+<ParamField body="inboxId" type="string" required>
+  Inbox item UUID
+</ParamField>
+
+<ParamField body="transactionId" type="string" required>
+  Transaction UUID
+</ParamField>
+
+```typescript
+await trpc.inbox.confirmMatch.mutate({
+  suggestionId: 'suggestion-uuid',
+  inboxId: 'inbox-uuid',
+  transactionId: 'transaction-uuid',
+});
+```
+
+### declineMatch
+
+Decline an AI-suggested transaction match.
+
+<ParamField body="suggestionId" type="string" required>
+  Suggestion UUID
+</ParamField>
+
+<ParamField body="inboxId" type="string" required>
+  Inbox item UUID
+</ParamField>
+
+```typescript
+await trpc.inbox.declineMatch.mutate({
+  suggestionId: 'suggestion-uuid',
+  inboxId: 'inbox-uuid',
+});
+```
+
+### retryMatching
+
+Retry AI matching for an inbox item.
+
+<ParamField body="id" type="string" required>
+  Inbox item UUID
+</ParamField>
+
+<ResponseField name="data" type="object">
+  <Expandable title="properties">
+    <ResponseField name="jobId" type="string">
+      Background job ID for tracking
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+```typescript
+const { jobId } = await trpc.inbox.retryMatching.mutate({
+  id: 'inbox-uuid',
+});
+```
+
+## Blocklist Management
+
+### blocklist.get
+
+Get the inbox blocklist (filtered senders/domains).
+
+<ResponseField name="items" type="array">
+  Array of blocklist entry objects
+</ResponseField>
+
+```typescript
+const blocklist = await trpc.inbox.blocklist.get.query({});
+```
+
+### blocklist.create
+
+Add an entry to the blocklist.
+
+<ParamField body="type" type="string" required>
+  "email" | "domain"
+</ParamField>
+
+<ParamField body="value" type="string" required>
+  Email address or domain to block
+</ParamField>
+
+```typescript
+// Block specific email
+await trpc.inbox.blocklist.create.mutate({
+  type: 'email',
+  value: 'spam@example.com',
+});
+
+// Block entire domain
+await trpc.inbox.blocklist.create.mutate({
+  type: 'domain',
+  value: 'marketing.com',
+});
+```
+
+### blocklist.delete
+
+Remove an entry from the blocklist.
+
+<ParamField body="id" type="string" required>
+  Blocklist entry UUID
+</ParamField>
+
+```typescript
+await trpc.inbox.blocklist.delete.mutate({
+  id: 'blocklist-uuid',
+});
+```
+
+## Email Integration
+
+The inbox automatically processes attachments from connected email accounts.
+
+### Setting Up Email Integration
+
+1. Connect an email account via [Inbox Accounts API](/api/inbox-accounts)
+2. Email attachments are automatically synced
+3. AI extracts vendor info and suggests transaction matches
+4. Confirm or decline matches in the UI
+
+### Automatic Processing
+
+When an email attachment is received:
+
+1. **Extract** - OCR and text extraction
+2. **Analyze** - AI identifies vendor, amount, date
+3. **Match** - Vector search finds similar transactions
+4. **Suggest** - Top matches presented for confirmation
+
+```typescript
+// Get inbox items with suggestions
+const { data } = await trpc.inbox.get.query({ status: 'pending' });
+
+data.forEach(item => {
+  if (item.suggestedMatches?.length > 0) {
+    console.log(`${item.displayName} has ${item.suggestedMatches.length} suggested matches`);
+  }
+});
+```

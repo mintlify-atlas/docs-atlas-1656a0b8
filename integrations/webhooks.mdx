@@ -1,0 +1,775 @@
+---
+title: "Webhooks"
+description: "Configure webhook endpoints to receive real-time events from integrations"
+---
+
+Midday provides webhook endpoints to receive real-time events from banking providers and app integrations. All webhooks are secured with signature verification.
+
+## Webhook Architecture
+
+Webhooks are implemented in the API router:
+
+```typescript
+// Location: ~/workspace/source/apps/api/src/rest/routers/webhooks/index.ts
+import { webhookRouter } from "@api/rest/routers/webhooks";
+
+app.route("/webhook", webhookRouter);
+```
+
+### Available Endpoints
+
+- `POST /webhook/plaid` - Plaid banking events
+- `POST /webhook/teller` - Teller banking events
+- `POST /webhook/whatsapp` - WhatsApp messages and media
+- `GET/POST /webhook/whatsapp` - WhatsApp verification and events
+- `POST /webhook/inbox` - Email inbox events
+- `POST /webhook/stripe` - Stripe payment events
+- `POST /webhook/polar` - Polar subscription events
+
+### Security
+
+All webhook endpoints:
+- Use public middleware (no auth required)
+- Verify signatures from service providers
+- Return 200 even on processing errors (to prevent retries)
+- Log all events for debugging
+
+## Plaid Webhooks
+
+Receive transaction updates and connection status changes from Plaid.
+
+### Configuration
+
+<Steps>
+  <Step title="Webhook URL">
+    Webhook URLs are automatically configured during Link token creation:
+    - Production: `https://api.midday.ai/webhook/plaid`
+    - Sandbox: `https://api-staging.midday.ai/webhook/plaid`
+
+    See: `~/workspace/source/packages/banking/src/providers/plaid/plaid-api.ts:59-65`
+  </Step>
+
+  <Step title="Signature Verification">
+    Plaid uses JWT signatures in the `Plaid-Verification` header:
+
+    ```typescript
+    import { validatePlaidWebhook } from "@api/utils/plaid";
+
+    const isValid = await validatePlaidWebhook({
+      body: rawBody,
+      verificationHeader: headers["plaid-verification"]
+    });
+    ```
+  </Step>
+</Steps>
+
+### Event Types
+
+#### Transaction Events
+
+<Accordion title="SYNC_UPDATES_AVAILABLE">
+  New transactions are available to sync.
+
+  ```json
+  {
+    "webhook_type": "TRANSACTIONS",
+    "webhook_code": "SYNC_UPDATES_AVAILABLE",
+    "item_id": "eVBnVMp7zdTJLkRNr33Rs6zr7KNJqBFL9DrE6",
+    "new_transactions": 19,
+    "environment": "production"
+  }
+  ```
+
+  **Action**: Triggers `sync-connection` job to fetch new transactions.
+</Accordion>
+
+<Accordion title="INITIAL_UPDATE">
+  First transaction sync after connection.
+
+  ```json
+  {
+    "webhook_type": "TRANSACTIONS",
+    "webhook_code": "INITIAL_UPDATE",
+    "item_id": "eVBnVMp7zdTJLkRNr33Rs6zr7KNJqBFL9DrE6",
+    "new_transactions": 523,
+    "environment": "production"
+  }
+  ```
+
+  **Action**: Triggers full sync of available transactions.
+</Accordion>
+
+<Accordion title="HISTORICAL_UPDATE">
+  Historical transaction data sync.
+
+  ```json
+  {
+    "webhook_type": "TRANSACTIONS",
+    "webhook_code": "HISTORICAL_UPDATE",
+    "item_id": "eVBnVMp7zdTJLkRNr33Rs6zr7KNJqBFL9DrE6",
+    "new_transactions": 2000,
+    "environment": "production"
+  }
+  ```
+
+  **Action**: Triggers manual sync if connection is new (created within 1 day).
+</Accordion>
+
+<Accordion title="TRANSACTIONS_REMOVED">
+  Bank removed transactions (corrections, deleted entries).
+
+  ```json
+  {
+    "webhook_type": "TRANSACTIONS",
+    "webhook_code": "TRANSACTIONS_REMOVED",
+    "item_id": "eVBnVMp7zdTJLkRNr33Rs6zr7KNJqBFL9DrE6",
+    "removed_transactions": [
+      "yBVBnVMp7zdTJLkRNr33Rs6zr7KNJqBFL9DrE6",
+      "kVBnVMp7zdTJLkRNr33Rs6zr7KNJqBFL9DrE6"
+    ],
+    "environment": "production"
+  }
+  ```
+
+  **Action**: Deletes transactions from database by internal IDs.
+</Accordion>
+
+#### Item Events
+
+<Accordion title="ERROR">
+  Connection error occurred (auth failure, invalid credentials, etc.).
+
+  ```json
+  {
+    "webhook_type": "ITEM",
+    "webhook_code": "ERROR",
+    "item_id": "eVBnVMp7zdTJLkRNr33Rs6zr7KNJqBFL9DrE6",
+    "error": {
+      "error_type": "ITEM_ERROR",
+      "error_code": "ITEM_LOGIN_REQUIRED",
+      "error_message": "the login details of this item have changed",
+      "display_message": "The login details for this account have changed. Please reconnect."
+    },
+    "environment": "production"
+  }
+  ```
+
+  **Action**: Marks connection as `disconnected`.
+</Accordion>
+
+<Accordion title="USER_PERMISSION_REVOKED">
+  User revoked access to their account via bank portal.
+
+  ```json
+  {
+    "webhook_type": "ITEM",
+    "webhook_code": "USER_PERMISSION_REVOKED",
+    "item_id": "eVBnVMp7zdTJLkRNr33Rs6zr7KNJqBFL9DrE6",
+    "environment": "production"
+  }
+  ```
+
+  **Action**: Marks connection as `disconnected`.
+</Accordion>
+
+<Accordion title="LOGIN_REPAIRED">
+  User successfully reconnected their account.
+
+  ```json
+  {
+    "webhook_type": "ITEM",
+    "webhook_code": "LOGIN_REPAIRED",
+    "item_id": "eVBnVMp7zdTJLkRNr33Rs6zr7KNJqBFL9DrE6",
+    "environment": "production"
+  }
+  ```
+
+  **Action**: Marks connection as `connected`.
+</Accordion>
+
+### Implementation
+
+Location: `~/workspace/source/apps/api/src/rest/routers/webhooks/plaid/index.ts`
+
+```typescript
+// Handle transaction webhook
+switch (webhook_code) {
+  case "SYNC_UPDATES_AVAILABLE":
+  case "INITIAL_UPDATE":
+  case "HISTORICAL_UPDATE":
+    await tasks.trigger("sync-connection", {
+      connectionId: connectionData.id,
+      manualSync: false
+    });
+    break;
+
+  case "TRANSACTIONS_REMOVED":
+    await deleteTransactionsByInternalIds(db, {
+      teamId: connectionData.team.id,
+      internalIds: removed_transactions
+    });
+    break;
+}
+```
+
+## Teller Webhooks
+
+Receive enrollment and transaction events from Teller.
+
+### Configuration
+
+<Steps>
+  <Step title="Webhook URL">
+    Configure in Teller dashboard:
+    ```
+    https://api.midday.ai/webhook/teller
+    ```
+  </Step>
+
+  <Step title="Signature Verification">
+    Teller uses HMAC signatures in the `Teller-Signature` header:
+
+    ```typescript
+    import { validateTellerSignature } from "@api/utils/teller";
+
+    const isValid = validateTellerSignature({
+      signatureHeader: headers["teller-signature"],
+      text: rawBody
+    });
+    ```
+  </Step>
+</Steps>
+
+### Event Types
+
+<Accordion title="enrollment.disconnected">
+  User disconnected their enrollment.
+
+  ```json
+  {
+    "id": "wh_abc123",
+    "type": "enrollment.disconnected",
+    "payload": {
+      "enrollment_id": "enr_xyz789",
+      "reason": "user_action"
+    },
+    "timestamp": "2024-01-15T10:30:00Z"
+  }
+  ```
+
+  **Action**: Marks connection as `disconnected`.
+</Accordion>
+
+<Accordion title="transactions.processed">
+  New transactions have been processed and are available.
+
+  ```json
+  {
+    "id": "wh_abc123",
+    "type": "transactions.processed",
+    "payload": {
+      "enrollment_id": "enr_xyz789"
+    },
+    "timestamp": "2024-01-15T10:30:00Z"
+  }
+  ```
+
+  **Action**: Triggers `sync-connection` job.
+</Accordion>
+
+<Accordion title="webhook.test">
+  Test webhook for verification.
+
+  ```json
+  {
+    "id": "wh_test",
+    "type": "webhook.test",
+    "payload": {},
+    "timestamp": "2024-01-15T10:30:00Z"
+  }
+  ```
+
+  **Action**: Returns success response.
+</Accordion>
+
+### Implementation
+
+Location: `~/workspace/source/apps/api/src/rest/routers/webhooks/teller/index.ts`
+
+```typescript
+switch (type) {
+  case "enrollment.disconnected":
+    await updateBankConnectionStatus(db, {
+      id: connectionData.id,
+      status: "disconnected"
+    });
+    break;
+
+  case "transactions.processed":
+    await tasks.trigger("sync-connection", {
+      connectionId: connectionData.id,
+      manualSync: false
+    });
+    break;
+}
+```
+
+## WhatsApp Webhooks
+
+Receive messages, media, and button interactions from WhatsApp Business API.
+
+### Configuration
+
+<Steps>
+  <Step title="Environment Variables">
+    ```bash
+    WHATSAPP_VERIFY_TOKEN=your_verify_token
+    WHATSAPP_APP_SECRET=your_app_secret
+    ```
+  </Step>
+
+  <Step title="Webhook URL">
+    Configure in Meta Developer Portal:
+    ```
+    https://api.midday.ai/webhook/whatsapp
+    ```
+
+    Callback URL verification uses GET request.
+  </Step>
+
+  <Step title="Verification">
+    Meta sends verification request:
+
+    ```
+    GET /webhook/whatsapp?hub.mode=subscribe&hub.verify_token=your_token&hub.challenge=random_string
+    ```
+
+    Must return the `hub.challenge` value if token matches.
+  </Step>
+</Steps>
+
+### Signature Verification
+
+```typescript
+import { verifyWebhookSignature } from "@midday/app-store/whatsapp/server";
+
+const isValid = verifyWebhookSignature(
+  rawBody,
+  headers["x-hub-signature-256"],
+  process.env.WHATSAPP_APP_SECRET
+);
+```
+
+### Event Types
+
+<Accordion title="Text Message">
+  User sent a text message.
+
+  ```json
+  {
+    "object": "whatsapp_business_account",
+    "entry": [{
+      "changes": [{
+        "field": "messages",
+        "value": {
+          "messages": [{
+            "from": "1234567890",
+            "id": "wamid.abc123",
+            "type": "text",
+            "text": { "body": "Hello" }
+          }]
+        }
+      }]
+    }]
+  }
+  ```
+
+  **Action**: 
+  - Extract inbox ID for connection
+  - Create WhatsApp connection if inbox ID present
+  - Send welcome message if not connected
+</Accordion>
+
+<Accordion title="Image Message">
+  User sent an image (receipt photo).
+
+  ```json
+  {
+    "object": "whatsapp_business_account",
+    "entry": [{
+      "changes": [{
+        "field": "messages",
+        "value": {
+          "messages": [{
+            "from": "1234567890",
+            "id": "wamid.abc123",
+            "type": "image",
+            "image": {
+              "id": "img_xyz789",
+              "mime_type": "image/jpeg"
+            }
+          }]
+        }
+      }]
+    }]
+  }
+  ```
+
+  **Action**:
+  - Verify user is connected
+  - React with processing emoji (⏳)
+  - Trigger upload job
+  - Process receipt and match to transaction
+  - Send match notification
+</Accordion>
+
+<Accordion title="Document Message">
+  User sent a document (PDF receipt).
+
+  ```json
+  {
+    "object": "whatsapp_business_account",
+    "entry": [{
+      "changes": [{
+        "field": "messages",
+        "value": {
+          "messages": [{
+            "from": "1234567890",
+            "id": "wamid.abc123",
+            "type": "document",
+            "document": {
+              "id": "doc_xyz789",
+              "mime_type": "application/pdf",
+              "filename": "receipt.pdf"
+            }
+          }]
+        }
+      }]
+    }]
+  }
+  ```
+
+  **Action**: Same as image message.
+</Accordion>
+
+<Accordion title="Interactive Button Reply">
+  User clicked approve/decline button on match notification.
+
+  ```json
+  {
+    "object": "whatsapp_business_account",
+    "entry": [{
+      "changes": [{
+        "field": "messages",
+        "value": {
+          "messages": [{
+            "from": "1234567890",
+            "id": "wamid.abc123",
+            "type": "interactive",
+            "interactive": {
+              "button_reply": {
+                "id": "confirm:inbox_123:txn_456"
+              }
+            }
+          }]
+        }
+      }]
+    }]
+  }
+  ```
+
+  **Action**:
+  - Parse button ID: `{action}:{inboxId}:{transactionId}`
+  - Get match suggestion
+  - Confirm or decline match
+  - Send confirmation message
+</Accordion>
+
+### Implementation
+
+Location: `~/workspace/source/apps/api/src/rest/routers/webhooks/whatsapp/index.ts`
+
+The webhook processes different message types:
+
+```typescript
+switch (message.type) {
+  case "text":
+    await handleTextMessage(db, phoneNumber, messageId, message.text.body);
+    break;
+
+  case "image":
+  case "document":
+    await handleMediaMessage(db, phoneNumber, messageId, message);
+    break;
+
+  case "interactive":
+    await handleButtonReply(db, phoneNumber, messageId, message.interactive.button_reply.id);
+    break;
+}
+```
+
+## Common Patterns
+
+### Webhook Handler Structure
+
+All webhooks follow this pattern:
+
+```typescript
+import { OpenAPIHono } from "@hono/zod-openapi";
+import { z } from "zod";
+
+const app = new OpenAPIHono<Context>();
+
+app.openapi(
+  createRoute({
+    method: "post",
+    path: "/",
+    summary: "Service webhook handler",
+    // ...
+  }),
+  async (c) => {
+    // 1. Get raw body for signature verification
+    const rawBody = await c.req.text();
+
+    // 2. Verify signature
+    const isValid = await verifySignature(rawBody, headers);
+    if (!isValid) {
+      throw new HTTPException(401, { message: "Invalid signature" });
+    }
+
+    // 3. Parse and validate payload
+    const body = JSON.parse(rawBody);
+    const result = webhookSchema.safeParse(body);
+
+    if (!result.success) {
+      throw new HTTPException(400, { message: "Invalid payload" });
+    }
+
+    // 4. Process webhook
+    await processWebhook(result.data);
+
+    // 5. Always return 200
+    return c.json({ success: true });
+  }
+);
+```
+
+### Error Handling
+
+Webhooks log errors but return 200 to prevent retries:
+
+```typescript
+try {
+  await processEvent(payload);
+} catch (error) {
+  logger.error("Webhook processing failed", {
+    webhookType: payload.type,
+    error: error instanceof Error ? error.message : "Unknown error"
+  });
+  
+  // Still return 200 to prevent infinite retries from provider
+  return c.json({ success: true });
+}
+```
+
+### Connection Lookup
+
+Webhooks look up connections using provider-specific identifiers:
+
+```typescript
+// Plaid: item_id
+const connection = await getBankConnectionByReferenceId(db, {
+  referenceId: itemId
+});
+
+// Teller: enrollment_id
+const connection = await getBankConnectionByEnrollmentId(db, {
+  enrollmentId: enrollmentId
+});
+
+// WhatsApp: phone number
+const app = await getAppByWhatsAppNumber(db, phoneNumber);
+```
+
+### Triggering Background Jobs
+
+Webhooks trigger asynchronous jobs for heavy processing:
+
+```typescript
+import { tasks } from "@trigger.dev/sdk";
+
+// Trigger sync job
+await tasks.trigger("sync-connection", {
+  connectionId: connection.id,
+  manualSync: false
+});
+
+// Trigger upload job
+await tasks.trigger("whatsapp-upload", {
+  teamId: team.id,
+  phoneNumber: phoneNumber,
+  mediaId: message.image.id,
+  mimeType: message.image.mime_type
+});
+```
+
+## Testing Webhooks
+
+### Local Testing
+
+<Steps>
+  <Step title="Use ngrok">
+    Expose your local server:
+
+    ```bash
+    ngrok http 3000
+    ```
+  </Step>
+
+  <Step title="Update Webhook URLs">
+    Configure the ngrok URL in service dashboards:
+    ```
+    https://abc123.ngrok.io/webhook/plaid
+    ```
+  </Step>
+
+  <Step title="Test Events">
+    Trigger test events from service dashboards:
+    - Plaid: Use sandbox environment
+    - Teller: Send test webhook
+    - WhatsApp: Send message from test number
+  </Step>
+</Steps>
+
+### Manual Testing
+
+<CodeGroup>
+```bash cURL - Plaid
+curl -X POST https://api.midday.ai/webhook/plaid \
+  -H "Content-Type: application/json" \
+  -H "Plaid-Verification: jwt_signature" \
+  -d '{
+    "webhook_type": "TRANSACTIONS",
+    "webhook_code": "SYNC_UPDATES_AVAILABLE",
+    "item_id": "test_item_id",
+    "environment": "sandbox"
+  }'
+```
+
+```bash cURL - Teller
+curl -X POST https://api.midday.ai/webhook/teller \
+  -H "Content-Type: application/json" \
+  -H "Teller-Signature: signature" \
+  -d '{
+    "id": "wh_test",
+    "type": "webhook.test",
+    "payload": {},
+    "timestamp": "2024-01-15T10:30:00Z"
+  }'
+```
+
+```bash cURL - WhatsApp
+curl -X POST https://api.midday.ai/webhook/whatsapp \
+  -H "Content-Type: application/json" \
+  -H "x-hub-signature-256: sha256=signature" \
+  -d '{
+    "object": "whatsapp_business_account",
+    "entry": [{
+      "changes": [{
+        "field": "messages",
+        "value": {
+          "messages": [{
+            "from": "1234567890",
+            "id": "test_msg",
+            "type": "text",
+            "text": { "body": "test" }
+          }]
+        }
+      }]
+    }]
+  }'
+```
+</CodeGroup>
+
+### Monitoring
+
+Webhooks are logged with structured data:
+
+```typescript
+logger.info("Webhook received", {
+  webhookType: type,
+  provider: "plaid",
+  itemId: item_id,
+  code: webhook_code
+});
+```
+
+Use logging infrastructure to:
+- Track webhook volume
+- Monitor processing errors
+- Debug signature failures
+- Identify slow handlers
+
+<Warning>
+  Webhook handlers should complete quickly (< 5 seconds). Use background jobs for heavy processing to avoid timeouts.
+</Warning>
+
+## Security Best Practices
+
+<AccordionGroup>
+  <Accordion title="Always Verify Signatures">
+    Never process webhooks without signature verification:
+
+    ```typescript
+    const isValid = await verifySignature(rawBody, signature, secret);
+    if (!isValid) {
+      throw new HTTPException(401);
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Use Raw Body for Verification">
+    Read body as text before parsing:
+
+    ```typescript
+    const rawBody = await c.req.text();
+    const isValid = verify(rawBody, signature);
+    const body = JSON.parse(rawBody); // Parse after verification
+    ```
+  </Accordion>
+
+  <Accordion title="Return 200 on Errors">
+    Prevent infinite retries:
+
+    ```typescript
+    try {
+      await process(webhook);
+    } catch (error) {
+      logger.error("Processing failed", { error });
+      return c.json({ success: true }); // Still 200
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Validate Payload Schema">
+    Use Zod for payload validation:
+
+    ```typescript
+    const result = webhookSchema.safeParse(body);
+    if (!result.success) {
+      throw new HTTPException(400);
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Rate Limit Webhook Endpoints">
+    Protect against abuse:
+
+    ```typescript
+    app.use("/webhook/*", rateLimit({
+      windowMs: 60000,
+      max: 100
+    }));
+    ```
+  </Accordion>
+</AccordionGroup>

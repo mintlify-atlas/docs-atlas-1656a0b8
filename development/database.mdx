@@ -1,0 +1,604 @@
+---
+title: Database
+description: Learn about Midday's Supabase database setup, schema, and query patterns
+---
+
+## Overview
+
+Midday uses **Supabase** (PostgreSQL) as its primary database with **Drizzle ORM** for type-safe queries. The database is designed for multi-tenancy with Row Level Security (RLS) and includes advanced features like vector embeddings for AI-powered matching.
+
+## Database Package
+
+All database code lives in `packages/db/`:
+
+```bash
+packages/db/
+├── src/
+│   ├── schema.ts              # Drizzle schema definitions
+│   ├── client.ts              # Database client setup
+│   ├── queries/               # Query functions
+│   │   ├── transactions.ts
+│   │   ├── invoices.ts
+│   │   ├── bank-accounts.ts
+│   │   └── .../              # 40+ query modules
+│   └── utils/                 # Helper utilities
+├── drizzle.config.ts          # Drizzle Kit configuration
+└── package.json
+```
+
+## Connection Setup
+
+### Database Clients
+
+Midday uses a sophisticated connection pooling strategy with primary and replica support:
+
+```typescript packages/db/src/client.ts
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { Pool } from 'pg';
+import * as schema from './schema';
+
+// Primary pool for writes
+const primaryPool = new Pool({
+  connectionString: process.env.DATABASE_PRIMARY_URL,
+  max: 40,
+  min: 8,
+  idleTimeoutMillis: 30000,
+  keepAlive: true,
+});
+
+export const primaryDb = drizzle(primaryPool, {
+  schema,
+  casing: 'snake_case',
+});
+
+// Regional replicas for reads
+const replicaPool = new Pool({
+  connectionString: process.env.DATABASE_FRA_URL, // or IAD, SJC
+  // ... same config
+});
+
+const replicaDb = drizzle(replicaPool, { schema });
+
+// Smart routing: writes to primary, reads to replica
+export const db = withReplicas(
+  primaryDb,
+  [replicaDb],
+  (replicas) => replicas[0]
+);
+```
+
+<Note>
+  **Regional Replicas**: Midday deploys replicas in Frankfurt (FRA), Washington (IAD), and San Jose (SJC) for low-latency reads.
+</Note>
+
+### Environment Variables
+
+```bash .env
+# Primary database (writes)
+DATABASE_PRIMARY_URL=postgresql://...
+
+# Regional replicas (reads)
+DATABASE_FRA_URL=postgresql://...
+DATABASE_IAD_URL=postgresql://...
+DATABASE_SJC_URL=postgresql://...
+
+# Session pooler (for serverless)
+DATABASE_SESSION_POOLER=postgresql://...
+
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbG...
+SUPABASE_SERVICE_KEY=eyJhbG...
+```
+
+## Schema Design
+
+### Core Enums
+
+The schema uses PostgreSQL enums for type safety:
+
+```typescript packages/db/src/schema.ts
+export const accountTypeEnum = pgEnum('account_type', [
+  'depository',
+  'credit',
+  'other_asset',
+  'loan',
+  'other_liability',
+]);
+
+export const bankProvidersEnum = pgEnum('bank_providers', [
+  'gocardless',
+  'plaid',
+  'teller',
+  'enablebanking',
+]);
+
+export const transactionStatusEnum = pgEnum('transactionStatus', [
+  'posted',
+  'pending',
+  'excluded',
+  'completed',
+  'archived',
+  'exported',
+]);
+
+export const invoiceStatusEnum = pgEnum('invoice_status', [
+  'draft',
+  'overdue',
+  'paid',
+  'unpaid',
+  'canceled',
+]);
+```
+
+### Key Tables
+
+<Tabs>
+  <Tab title="Teams & Users">
+    Multi-tenancy foundation:
+    
+    ```typescript
+    export const teams = pgTable('teams', {
+      id: uuid('id').primaryKey(),
+      name: text('name'),
+      email: text('email'),
+      logoUrl: text('logo_url'),
+      createdAt: timestamp('created_at').defaultNow(),
+    });
+    
+    export const users = pgTable('users', {
+      id: uuid('id').primaryKey(),
+      email: text('email').notNull(),
+      fullName: text('full_name'),
+      avatarUrl: text('avatar_url'),
+      locale: text('locale'),
+      timezone: text('timezone'),
+    });
+    
+    export const usersOnTeam = pgTable('users_on_team', {
+      id: uuid('id').primaryKey(),
+      userId: uuid('user_id').references(() => users.id),
+      teamId: uuid('team_id').references(() => teams.id),
+      role: teamRolesEnum('role'), // 'owner' | 'member'
+    });
+    ```
+  </Tab>
+  
+  <Tab title="Banking">
+    Bank connections and accounts:
+    
+    ```typescript
+    export const bankConnections = pgTable('bank_connections', {
+      id: uuid('id').primaryKey(),
+      teamId: uuid('team_id').references(() => teams.id),
+      institutionId: text('institution_id'),
+      provider: bankProvidersEnum('provider'),
+      accessToken: text('access_token'), // Encrypted
+      status: connectionStatusEnum('status'),
+      lastSyncedAt: timestamp('last_synced_at'),
+    });
+    
+    export const bankAccounts = pgTable('bank_accounts', {
+      id: uuid('id').primaryKey(),
+      teamId: uuid('team_id').references(() => teams.id),
+      connectionId: uuid('connection_id').references(() => bankConnections.id),
+      name: text('name'),
+      currency: text('currency'),
+      type: accountTypeEnum('type'),
+      balance: numericCasted('balance'),
+      enabled: boolean('enabled').default(true),
+    });
+    ```
+  </Tab>
+  
+  <Tab title="Transactions">
+    Core transaction table with embeddings:
+    
+    ```typescript
+    export const transactions = pgTable('transactions', {
+      id: uuid('id').primaryKey(),
+      teamId: uuid('team_id').references(() => teams.id),
+      bankAccountId: uuid('bank_account_id').references(() => bankAccounts.id),
+      date: timestamp('date'),
+      amount: numericCasted('amount'),
+      currency: text('currency'),
+      name: text('name'),
+      description: text('description'),
+      category: text('category'),
+      method: transactionMethodsEnum('method'),
+      status: transactionStatusEnum('status'),
+      frequency: transactionFrequencyEnum('frequency'),
+      categorySlug: text('category_slug'),
+      manual: boolean('manual').default(false),
+    });
+    
+    // Vector embeddings for AI matching
+    export const transactionEmbeddings = pgTable('transaction_embeddings', {
+      id: uuid('id').primaryKey(),
+      transactionId: uuid('transaction_id').references(() => transactions.id),
+      embedding: vector('embedding', { dimensions: 1024 }),
+    });
+    ```
+  </Tab>
+  
+  <Tab title="Invoices">
+    Invoice management with recurring support:
+    
+    ```typescript
+    export const invoices = pgTable('invoices', {
+      id: uuid('id').primaryKey(),
+      teamId: uuid('team_id').references(() => teams.id),
+      invoiceNumber: text('invoice_number'),
+      customerId: uuid('customer_id'),
+      status: invoiceStatusEnum('status'),
+      dueDate: date('due_date'),
+      amount: numericCasted('amount'),
+      currency: text('currency'),
+      tax: numericCasted('tax'),
+      template: text('template'),
+      size: invoiceSizeEnum('size'),
+      paidAt: timestamp('paid_at'),
+    });
+    
+    export const invoiceRecurring = pgTable('invoice_recurring', {
+      id: uuid('id').primaryKey(),
+      teamId: uuid('team_id').references(() => teams.id),
+      frequency: invoiceRecurringFrequencyEnum('frequency'),
+      startDate: date('start_date'),
+      endType: invoiceRecurringEndTypeEnum('end_type'),
+      status: invoiceRecurringStatusEnum('status'),
+    });
+    ```
+  </Tab>
+  
+  <Tab title="Inbox">
+    Magic inbox for receipt matching:
+    
+    ```typescript
+    export const inbox = pgTable('inbox', {
+      id: uuid('id').primaryKey(),
+      teamId: uuid('team_id').references(() => teams.id),
+      fileId: text('file_id'),
+      fileName: text('file_name'),
+      filePath: text('file_path'),
+      amount: numericCasted('amount'),
+      currency: text('currency'),
+      date: timestamp('date'),
+      status: inboxStatusEnum('status'),
+      type: inboxTypeEnum('type'), // 'invoice' | 'expense' | 'other'
+      transactionId: uuid('transaction_id'),
+      displayName: text('display_name'),
+    });
+    
+    // AI-powered embeddings for matching
+    export const inboxEmbeddings = pgTable('inbox_embeddings', {
+      id: uuid('id').primaryKey(),
+      inboxId: uuid('inbox_id').references(() => inbox.id),
+      embedding: vector('embedding', { dimensions: 1024 }),
+    });
+    ```
+  </Tab>
+  
+  <Tab title="Documents">
+    Secure document vault:
+    
+    ```typescript
+    export const documents = pgTable('documents', {
+      id: uuid('id').primaryKey(),
+      teamId: uuid('team_id').references(() => teams.id),
+      name: text('name'),
+      pathTokens: text('path_tokens').array(),
+      fileKey: text('file_key'), // Encrypted storage key
+      contentType: text('content_type'),
+      size: integer('size'),
+      processingStatus: documentProcessingStatusEnum('processing_status'),
+    });
+    
+    export const documentTags = pgTable('document_tags', {
+      id: uuid('id').primaryKey(),
+      teamId: uuid('team_id').references(() => teams.id),
+      name: text('name'),
+      color: text('color'),
+    });
+    ```
+  </Tab>
+</Tabs>
+
+## Query Patterns
+
+The `packages/db/src/queries/` directory contains 40+ query modules:
+
+### Transaction Queries
+
+```typescript packages/db/src/queries/transactions.ts
+import { db } from '../client';
+import { transactions, bankAccounts } from '../schema';
+import { eq, and, gte, lte, desc } from 'drizzle-orm';
+
+export async function getTransactions(params: {
+  teamId: string;
+  cursor?: string;
+  pageSize?: number;
+  start?: string;
+  end?: string;
+  categories?: string[];
+  statuses?: string[];
+}) {
+  const {
+    teamId,
+    cursor,
+    pageSize = 40,
+    start,
+    end,
+    categories,
+    statuses,
+  } = params;
+
+  const conditions = [eq(transactions.teamId, teamId)];
+
+  if (start) {
+    conditions.push(gte(transactions.date, new Date(start)));
+  }
+
+  if (end) {
+    conditions.push(lte(transactions.date, new Date(end)));
+  }
+
+  if (categories?.length) {
+    conditions.push(inArray(transactions.categorySlug, categories));
+  }
+
+  const results = await db
+    .select()
+    .from(transactions)
+    .leftJoin(bankAccounts, eq(transactions.bankAccountId, bankAccounts.id))
+    .where(and(...conditions))
+    .orderBy(desc(transactions.date))
+    .limit(pageSize);
+
+  return results;
+}
+```
+
+### Vector Similarity Search
+
+For AI-powered receipt matching:
+
+```typescript
+import { cosineDistance } from 'drizzle-orm';
+
+export async function findSimilarTransactions(
+  embedding: number[],
+  teamId: string,
+  limit = 5
+) {
+  return await db
+    .select({
+      transaction: transactions,
+      similarity: cosineDistance(transactionEmbeddings.embedding, embedding),
+    })
+    .from(transactionEmbeddings)
+    .innerJoin(
+      transactions,
+      eq(transactionEmbeddings.transactionId, transactions.id)
+    )
+    .where(eq(transactions.teamId, teamId))
+    .orderBy(cosineDistance(transactionEmbeddings.embedding, embedding))
+    .limit(limit);
+}
+```
+
+### Complex Joins
+
+```typescript
+export async function getInvoiceWithDetails(invoiceId: string) {
+  return await db
+    .select({
+      invoice: invoices,
+      customer: customers,
+      lineItems: invoiceLineItems,
+      team: teams,
+    })
+    .from(invoices)
+    .leftJoin(customers, eq(invoices.customerId, customers.id))
+    .leftJoin(invoiceLineItems, eq(invoices.id, invoiceLineItems.invoiceId))
+    .leftJoin(teams, eq(invoices.teamId, teams.id))
+    .where(eq(invoices.id, invoiceId))
+    .limit(1);
+}
+```
+
+## Drizzle ORM
+
+### Configuration
+
+```typescript drizzle.config.ts
+import type { Config } from 'drizzle-kit';
+
+export default {
+  schema: './src/schema.ts',
+  out: './migrations',
+  dialect: 'postgresql',
+  dbCredentials: {
+    url: process.env.DATABASE_SESSION_POOLER!,
+  },
+} satisfies Config;
+```
+
+### Common Commands
+
+<CodeGroup>
+```bash Generate Migration
+cd packages/db
+bun run drizzle-kit generate
+```
+
+```bash Push Schema
+bun run drizzle-kit push
+```
+
+```bash Studio
+bun run drizzle-kit studio
+```
+
+```bash Drop Migration
+bun run drizzle-kit drop
+```
+</CodeGroup>
+
+## Supabase Client
+
+Midday uses Supabase for auth, storage, and realtime features:
+
+### Server-Side Client
+
+```typescript packages/supabase/src/client/server.ts
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
+
+export async function createClient(options?: { admin?: boolean }) {
+  const { admin = false } = options ?? {};
+  const cookieStore = await cookies();
+
+  const key = admin
+    ? process.env.SUPABASE_SERVICE_KEY!
+    : process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    key,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          for (const { name, value, options } of cookiesToSet) {
+            cookieStore.set(name, value, options);
+          }
+        },
+      },
+    }
+  );
+}
+```
+
+### Client-Side Client
+
+```typescript packages/supabase/src/client/client.ts
+import { createBrowserClient } from '@supabase/ssr';
+
+export function createClient() {
+  return createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+}
+```
+
+### Storage Usage
+
+```typescript
+import { createClient } from '@midday/supabase/server';
+
+const supabase = await createClient({ admin: true });
+
+// Upload file
+const { data, error } = await supabase.storage
+  .from('vault')
+  .upload(`${teamId}/${fileName}`, file);
+
+// Download file
+const { data } = await supabase.storage
+  .from('vault')
+  .download(`${teamId}/${fileName}`);
+
+// Get public URL
+const { data: { publicUrl } } = supabase.storage
+  .from('vault')
+  .getPublicUrl(`${teamId}/${fileName}`);
+```
+
+## Row Level Security
+
+All tables have RLS policies for multi-tenancy:
+
+```sql
+-- Example RLS policy for transactions
+CREATE POLICY "Users can view their team's transactions"
+  ON transactions
+  FOR SELECT
+  USING (
+    team_id IN (
+      SELECT team_id 
+      FROM users_on_team 
+      WHERE user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Users can insert their team's transactions"
+  ON transactions
+  FOR INSERT
+  WITH CHECK (
+    team_id IN (
+      SELECT team_id 
+      FROM users_on_team 
+      WHERE user_id = auth.uid()
+    )
+  );
+```
+
+<Warning>
+  Always include `teamId` in queries to ensure RLS policies are respected.
+</Warning>
+
+## Database Testing
+
+```bash
+cd packages/db
+
+# Run all tests
+bun test
+
+# Run specific test suite
+bun test:matching
+bun test:reports
+
+# Watch mode
+bun test:watch
+```
+
+## Performance Tips
+
+<Steps>
+  <Step title="Use Indexes">
+    Ensure proper indexes on foreign keys and frequently queried columns.
+  </Step>
+  
+  <Step title="Batch Queries">
+    Use transactions for multiple related operations.
+  </Step>
+  
+  <Step title="Connection Pooling">
+    Let the client handle connection pooling automatically.
+  </Step>
+  
+  <Step title="Regional Replicas">
+    Read from replicas, write to primary for optimal performance.
+  </Step>
+</Steps>
+
+<Tip>
+  Enable `DEBUG_PERF=true` to log query performance metrics.
+</Tip>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Architecture" href="/development/architecture" icon="diagram-project">
+    Learn about the overall system architecture
+  </Card>
+  <Card title="Contributing" href="/development/contributing" icon="code-pull-request">
+    Start contributing to Midday
+  </Card>
+</CardGroup>

@@ -1,80 +1,305 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quickstart
+description: Get started with Midday in minutes - connect your bank account or create your first invoice
 ---
 
-## Get started in three steps
+# Quickstart Guide
 
-Get your documentation site running locally and make your first customization.
+This guide will help you get up and running with Midday quickly. You'll learn how to sign up, complete onboarding, and perform your first meaningful actions: connecting a bank account or creating an invoice.
 
-### Step 1: Set up your local environment
+## Sign Up
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
+Midday uses Supabase Auth for secure authentication. You can sign up using:
+
+- Email and password
+- Magic link (passwordless)
+- OAuth providers (Google, GitHub)
+
+<Steps>
+  <Step title="Create Your Account">
+    Visit [midday.ai](https://midday.ai) and click "Get Started" to create your account.
     
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
+    <Info>
+      Midday uses secure authentication with email verification to protect your financial data.
+    </Info>
+  </Step>
+
+  <Step title="Set Up Your Profile">
+    After signing up, you'll be guided through an onboarding flow to set up your profile:
+
+    ```typescript
+    // The onboarding flow collects essential information
+    const steps = [
+      "set-name",         // Your name and avatar
+      "create-team",      // Business details and currency
+      "connect-bank",     // Bank account connection
+      "connect-inbox",    // Email inbox for receipts
+      "reconciliation",   // Learn about matching transactions
+      "start-trial"       // Choose your plan
+    ];
+    ```
+
+    You'll need to provide:
+    - Your full name
+    - Business name
+    - Currency (USD, EUR, GBP, etc.)
+    - Country code (for bank selection)
+  </Step>
+
+  <Step title="Complete Onboarding">
+    The onboarding process is designed to get you productive quickly. You can skip optional steps and return to them later.
     
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+    <Note>
+      All steps except name and business details are optional - you can skip them and set them up later from settings.
+    </Note>
+  </Step>
+</Steps>
 
-### Step 2: Deploy your changes
+## Connect Your First Bank Account
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+Connecting your bank account is the fastest way to get value from Midday. It automatically syncs transactions, categorizes expenses, and provides financial insights.
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+<Steps>
+  <Step title="Choose Your Region">
+    Midday supports banks in multiple regions:
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+    - **United States & Canada** - Plaid or Teller
+    - **Europe** - GoCardLess (20,000+ banks)
+    - **Extended Coverage** - EnableBanking
 
-### Step 3: Go live
+    The onboarding flow automatically detects your country and shows compatible banks.
+  </Step>
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+  <Step title="Search for Your Bank">
+    Use the bank search to find your financial institution:
 
-## Next steps
+    ```typescript
+    // Search through available institutions
+    const institutions = await trpc.institutions.get({
+      q: "chase",           // Search query
+      countryCode: "US"     // Country filter
+    });
+    ```
 
-Now that you have your docs running, explore these key features:
+    The search supports:
+    - Bank names
+    - Popular aliases
+    - Country-specific filtering
+  </Step>
+
+  <Step title="Authorize the Connection">
+    Midday uses secure OAuth flows to connect to your bank:
+
+    1. Click "Connect" next to your bank
+    2. You'll be redirected to your bank's login page
+    3. Enter your banking credentials (handled by the provider, not Midday)
+    4. Grant permission to access your accounts
+    5. Select which accounts to sync
+
+    <Warning>
+      Your banking credentials are never stored or seen by Midday. All authentication happens directly with your bank through secure OAuth providers.
+    </Warning>
+  </Step>
+
+  <Step title="Select Accounts">
+    Choose which accounts you want to sync with Midday:
+
+    ```typescript
+    // The SelectBankAccountsContent component handles account selection
+    <SelectBankAccountsContent
+      enabled
+      onComplete={handleComplete}
+      onSyncStarted={(data) => {
+        // Sync begins immediately after selection
+        console.log('Syncing account:', data.runId);
+      }}
+    />
+    ```
+
+    You can select:
+    - Checking accounts
+    - Savings accounts
+    - Credit cards
+    - Business accounts
+  </Step>
+
+  <Step title="Initial Sync">
+    Midday will immediately begin syncing your transactions:
+
+    - **Historical data**: Up to 24 months of transaction history
+    - **Real-time updates**: New transactions sync automatically
+    - **Smart categorization**: AI-powered expense categorization
+
+    The initial sync typically takes 1-2 minutes depending on transaction volume.
+
+    <Info>
+      You can continue using Midday while the sync runs in the background. You'll see a progress indicator at the top of the screen.
+    </Info>
+  </Step>
+</Steps>
+
+## Create Your First Invoice
+
+If you're ready to bill a client, creating an invoice is quick and easy.
+
+<Steps>
+  <Step title="Navigate to Invoices">
+    From the dashboard, click "Invoices" in the sidebar or press `Cmd/Ctrl + I`.
+
+    ```bash
+    Dashboard → Invoices → "Create Invoice"
+    ```
+  </Step>
+
+  <Step title="Add Client Information">
+    Enter your client's details:
+
+    - Client name
+    - Email address
+    - Billing address (optional)
+    - VAT/Tax ID (for EU clients)
+
+    <Note>
+      Client information is saved for future invoices. You can manage your client list from Settings → Customers.
+    </Note>
+  </Step>
+
+  <Step title="Add Line Items">
+    Add services or products to your invoice:
+
+    ```typescript
+    // Invoice line item structure
+    type LineItem = {
+      name: string;           // "Website Design"
+      description?: string;   // "Landing page redesign"
+      quantity: number;       // 1
+      price: number;          // 5000.00
+      tax?: number;           // 20 (percentage)
+    };
+    ```
+
+    For each line item, specify:
+    - Description
+    - Quantity
+    - Unit price
+    - Tax rate (if applicable)
+  </Step>
+
+  <Step title="Configure Payment Terms">
+    Set your invoice details:
+
+    ```typescript
+    // Invoice configuration options
+    {
+      invoice_number: "INV-001",      // Auto-generated or custom
+      issue_date: "2026-02-28",       // Today by default
+      due_date: "2026-03-30",         // Payment due date
+      payment_terms: "net_30",        // net_15, net_30, net_60, etc.
+      currency: "USD",                // Your team currency
+      note?: "Thank you for your business!"
+    }
+    ```
+
+    Common payment terms:
+    - **Due on receipt** - Payment expected immediately
+    - **Net 15** - Payment due in 15 days
+    - **Net 30** - Payment due in 30 days (most common)
+    - **Net 60** - Payment due in 60 days
+  </Step>
+
+  <Step title="Preview and Send">
+    Before sending, preview your invoice:
+
+    - **HTML preview** - See how it looks in the browser
+    - **PDF generation** - Download a PDF version
+    - **Mobile preview** - Check mobile responsiveness
+
+    When ready, you can:
+    - **Send via email** - Automatic email with PDF attachment
+    - **Copy link** - Share a web link to the invoice
+    - **Download PDF** - Save for your records
+  </Step>
+
+  <Step title="Track Payment Status">
+    After sending, Midday automatically tracks your invoice:
+
+    ```typescript
+    // Invoice statuses
+    type InvoiceStatus = 
+      | "draft"       // Not sent yet
+      | "scheduled"   // Scheduled to send
+      | "unpaid"      // Sent but not paid
+      | "paid"        // Fully paid
+      | "overdue"     // Past due date
+      | "canceled";   // Canceled
+    ```
+
+    View your invoice dashboard to see:
+    - Open invoices (scheduled + unpaid)
+    - Overdue invoices
+    - Total paid amount
+    - Average payment time
+  </Step>
+</Steps>
+
+## Next Steps
+
+Now that you've connected your bank or created an invoice, explore more features:
 
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="Time Tracking" icon="clock" href="/features/time-tracking">
+    Track time spent on projects and convert to invoices
+  </Card>
+  <Card title="Magic Inbox" icon="inbox" href="/features/magic-inbox">
+    Connect your email to auto-match receipts to transactions
+  </Card>
+  <Card title="Vault" icon="folder" href="/features/vault">
+    Upload contracts, agreements, and important documents
+  </Card>
+  <Card title="Financial Insights" icon="chart-line" href="/features/insights">
+    Get AI-powered insights into your business finances
+  </Card>
 </CardGroup>
 
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>
+## Keyboard Shortcuts
+
+Midday is designed for keyboard-first productivity:
+
+| Shortcut | Action |
+|----------|--------|
+| `Cmd/Ctrl + K` | Open command palette |
+| `Cmd/Ctrl + I` | Go to invoices |
+| `Cmd/Ctrl + T` | Go to transactions |
+| `Cmd/Ctrl + P` | Go to tracker (time) |
+| `Cmd/Ctrl + V` | Go to vault |
+| `Cmd/Ctrl + /` | Show all shortcuts |
+
+<Info>
+  Need help? Check out our [full documentation](/introduction) or reach out to [engineer@midday.ai](mailto:engineer@midday.ai).
+</Info>
+
+## Common Questions
+
+<AccordionGroup>
+  <Accordion title="How many bank accounts can I connect?">
+    You can connect unlimited bank accounts on all plans. Each account syncs independently and transactions are automatically consolidated in your dashboard.
+  </Accordion>
+
+  <Accordion title="What currencies does Midday support?">
+    Midday supports 150+ currencies. Your team has a base currency for invoicing and reporting, but you can track transactions in multiple currencies with automatic conversion.
+  </Accordion>
+
+  <Accordion title="Can I import existing transactions?">
+    Yes! You can import transactions via CSV from Settings → Transactions → Import. This is useful for:
+    - Historical data before bank connection
+    - Banks not yet supported
+    - Manual cash transactions
+  </Accordion>
+
+  <Accordion title="How often do transactions sync?">
+    Transactions sync automatically:
+    - **Real-time**: When you manually trigger a refresh
+    - **Daily**: Automatic sync every 24 hours
+    - **Webhooks**: Some providers send instant notifications for new transactions
+  </Accordion>
+</AccordionGroup>

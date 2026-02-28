@@ -1,0 +1,513 @@
+---
+title: Customer Management
+description: Manage customer relationships, track invoice history, and analyze customer metrics for better business insights.
+---
+
+## Overview
+
+The Customers page helps you manage all your client relationships in one place. Track customer details, view invoice history, analyze payment patterns, and identify your most valuable customers.
+
+## Customer Directory
+
+### Customer List
+
+View all your customers in a comprehensive table:
+
+```typescript
+const customerColumns = [
+  "name",              // Customer name
+  "email",             // Contact email
+  "website",           // Customer website
+  "totalInvoices",     // Number of invoices
+  "totalRevenue",      // Lifetime value
+  "lastInvoiceDate",   // Most recent invoice
+  "paymentScore",      // Average days to payment
+  "status"            // Active/Inactive
+]
+```
+
+### Adding Customers
+
+<Steps>
+  <Step title="Open new customer form">
+    Click the "+" button on the Customers page.
+  </Step>
+  
+  <Step title="Enter details">
+    Fill in customer information:
+    - Name (required)
+    - Email address
+    - Website URL
+    - Billing address
+    - Notes
+  </Step>
+  
+  <Step title="Save customer">
+    Customer is added to your directory and available for invoicing.
+  </Step>
+</Steps>
+
+<Note>
+  Customers are automatically created when you send an invoice to a new email address. You can edit details later.
+</Note>
+
+## Customer Details
+
+### Customer Profile
+
+Click any customer to view their full profile:
+
+```typescript
+const customerProfile = {
+  // Basic Information
+  id: "cust_123",
+  name: "Acme Corporation",
+  email: "billing@acme.com",
+  website: "https://acme.com",
+  
+  // Metrics
+  totalInvoices: 24,
+  totalRevenue: 125000.00,
+  averageInvoiceAmount: 5208.33,
+  paymentScore: 12, // Average days to payment
+  
+  // Status
+  isActive: true,
+  firstInvoiceDate: "2025-03-15",
+  lastInvoiceDate: "2026-02-28",
+  
+  // Relationships
+  invoices: [/* Array of invoice objects */],
+  notes: "Prefer NET-30 terms, invoice on 1st of month"
+}
+```
+
+### Invoice History
+
+View all invoices for a customer:
+
+- **Invoice List:** See all invoices chronologically
+- **Status Breakdown:** Paid, unpaid, overdue counts
+- **Revenue Timeline:** Visual graph of payments over time
+- **Quick Actions:** Create new invoice, send reminder
+
+<Tabs>
+  <Tab title="Active Customers">
+    ```typescript
+    const activeCustomer = {
+      status: "active",
+      criteria: {
+        hasRecentInvoice: true,
+        lastInvoiceWithin: "90 days",
+        hasUnpaidInvoices: true || false
+      }
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Inactive Customers">
+    ```typescript
+    const inactiveCustomer = {
+      status: "inactive",
+      criteria: {
+        lastInvoiceOlderThan: "90 days",
+        noUpcomingInvoices: true
+      },
+      actions: [
+        "Re-engage campaign",
+        "Archive customer",
+        "Request feedback"
+      ]
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Customer Analytics
+
+### Overview Metrics
+
+The customers page displays key insights:
+
+<Card title="Customer Insights" icon="chart-bar">
+  - **Most Active Customer** - Customer with most invoices
+  - **Inactive Customers** - No invoices in 90+ days
+  - **Top Revenue Customer** - Highest lifetime value
+  - **New Customers** - Customers added this month
+</Card>
+
+These metrics update in real-time based on invoice activity.
+
+### Customer Segments
+
+Automatically segment customers:
+
+```typescript
+const customerSegments = {
+  topTier: {
+    criteria: { revenue: { gte: 50000 } },
+    count: 5,
+    totalRevenue: 425000
+  },
+  
+  regular: {
+    criteria: { revenue: { gte: 10000, lt: 50000 } },
+    count: 15,
+    totalRevenue: 285000
+  },
+  
+  occasional: {
+    criteria: { revenue: { lt: 10000 } },
+    count: 32,
+    totalRevenue: 95000
+  },
+  
+  atRisk: {
+    criteria: { 
+      lastInvoice: { olderThan: "90 days" },
+      previouslyActive: true
+    },
+    count: 8,
+    action: "Re-engagement needed"
+  }
+}
+```
+
+### Payment Patterns
+
+Analyze how customers pay:
+
+- **Payment Score:** Average days from invoice to payment
+- **Payment Reliability:** Percentage of on-time payments
+- **Payment Method:** Preferred payment method
+- **Payment Terms:** Typical NET terms (NET-15, NET-30, etc.)
+
+<Note>
+  Customers with consistently fast payment (low payment score) are highlighted as "Great payers" in the interface.
+</Note>
+
+## Searching & Filtering
+
+### Search
+
+Find customers quickly:
+
+```typescript
+const searchFields = [
+  "name",            // Customer name
+  "email",           // Email address
+  "website",         // Website URL
+  "notes"           // Customer notes
+]
+```
+
+Search is instant and highlights matching customers.
+
+### Filters
+
+Narrow down your customer list:
+
+**Status Filters:**
+- Active customers
+- Inactive customers (90+ days)
+- New customers (this month)
+
+**Revenue Filters:**
+- Top customers (by revenue)
+- Minimum revenue threshold
+- Maximum revenue threshold
+
+**Invoice Filters:**
+- Has unpaid invoices
+- Has overdue invoices
+- Number of invoices (min/max)
+
+**Payment Filters:**
+- Fast payers (payment score < 15 days)
+- Slow payers (payment score > 45 days)
+- Payment score range
+
+## Customer Communication
+
+### Email Integration
+
+Send invoices and reminders directly to customers:
+
+<Steps>
+  <Step title="Select customer">
+    Open customer profile or select from list.
+  </Step>
+  
+  <Step title="Choose action">
+    - Send new invoice
+    - Send reminder for unpaid invoice
+    - Send thank you for payment
+  </Step>
+  
+  <Step title="Customize message">
+    Edit email template if needed.
+  </Step>
+  
+  <Step title="Send">
+    Email is sent and logged in customer history.
+  </Step>
+</Steps>
+
+### Communication History
+
+Track all interactions:
+
+```typescript
+const communicationLog = [
+  {
+    type: "invoice_sent",
+    date: "2026-02-28T09:00:00Z",
+    subject: "Invoice #INV-1234",
+    opened: true,
+    openedAt: "2026-02-28T14:30:00Z"
+  },
+  {
+    type: "reminder_sent",
+    date: "2026-02-25T10:00:00Z",
+    subject: "Payment Reminder",
+    opened: false
+  },
+  {
+    type: "payment_received",
+    date: "2026-02-28T16:00:00Z",
+    amount: 1500.00
+  }
+]
+```
+
+## Bulk Operations
+
+### Selecting Customers
+
+Select multiple customers for bulk actions:
+
+- Click checkboxes on customer rows
+- Use `Shift + Click` to select range
+- Use "Select All" for all visible customers
+
+### Available Actions
+
+<Card title="Bulk Actions" icon="users">
+  - **Send Invoices** - Create and send invoices to multiple customers
+  - **Send Reminders** - Remind multiple customers about unpaid invoices
+  - **Export** - Export customer data to CSV
+  - **Tag** - Add tags to multiple customers
+  - **Delete** - Remove customers (with confirmation)
+</Card>
+
+<Warning>
+  Deleting a customer does not delete their invoices. Invoices will remain but show "Customer Deleted" instead of the name.
+</Warning>
+
+## Customer Insights
+
+### Lifetime Value (LTV)
+
+Track total revenue per customer:
+
+```typescript
+const ltv = {
+  totalInvoiced: 125000.00,     // All invoices
+  totalPaid: 118500.00,         // Paid invoices
+  totalOutstanding: 6500.00,    // Unpaid invoices
+  averageInvoice: 5208.33,      // Mean invoice amount
+  invoiceCount: 24,
+  customerSince: "2025-03-15",
+  monthlyAverage: 10416.67      // Avg revenue per month
+}
+```
+
+### Churn Risk
+
+Identify customers at risk of churning:
+
+```typescript
+const churnRisk = {
+  score: "high",
+  reasons: [
+    "No invoice in 120 days",
+    "Previous invoices were regular (monthly)",
+    "Last payment was disputed"
+  ],
+  recommendations: [
+    "Send re-engagement email",
+    "Offer special discount",
+    "Request feedback call"
+  ]
+}
+```
+
+Customers flagged as at-risk appear in the **Inactive Customers** metric card.
+
+## Integration with Invoicing
+
+### Quick Invoice Creation
+
+Create invoices for customers directly:
+
+<Steps>
+  <Step title="From customer profile">
+    Click "New Invoice" button in customer profile.
+  </Step>
+  
+  <Step title="Pre-filled details">
+    Customer details auto-populate in the invoice.
+  </Step>
+  
+  <Step title="Add line items">
+    Add products/services and send.
+  </Step>
+</Steps>
+
+### Customer Templates
+
+Save invoice templates per customer:
+
+```typescript
+const customerTemplate = {
+  customerId: "cust_123",
+  defaultLineItems: [
+    { name: "Monthly Retainer", price: 5000, unit: "month" }
+  ],
+  defaultPaymentTerms: "NET-30",
+  defaultNote: "Thank you for your continued business!",
+  autoSend: true,
+  recurringSchedule: "monthly"
+}
+```
+
+<Note>
+  Customer templates are especially useful for recurring billing. Set up once and let Midday handle the rest.
+</Note>
+
+## Exporting Customer Data
+
+### CSV Export
+
+Export customer data for analysis:
+
+```typescript
+const exportColumns = [
+  "name",
+  "email",
+  "website",
+  "totalInvoices",
+  "totalRevenue",
+  "averageInvoiceAmount",
+  "paymentScore",
+  "firstInvoiceDate",
+  "lastInvoiceDate",
+  "status"
+]
+```
+
+### Integration Export
+
+Sync customers with other platforms:
+
+- **CRM Systems:** Export to Salesforce, HubSpot
+- **Email Marketing:** Sync with Mailchimp, ConvertKit
+- **Accounting:** Sync with QuickBooks, Xero
+
+See [Integrations](/integrations/overview) for setup details.
+
+## Customer Portal
+
+Customers can access their own portal:
+
+<Tabs>
+  <Tab title="Portal Features">
+    ```typescript
+    const portalAccess = {
+      viewInvoices: true,        // See all invoices
+      downloadPDFs: true,        // Download invoice PDFs
+      makePayments: true,        // Pay online
+      viewHistory: true,         // Payment history
+      updateDetails: true,       // Update contact info
+      downloadReceipts: true     // Download receipts
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Portal Setup">
+    <Steps>
+      <Step title="Enable portal">
+        Turn on customer portal in Settings → Invoicing.
+      </Step>
+      
+      <Step title="Send invitation">
+        Customers receive portal link with first invoice.
+      </Step>
+      
+      <Step title="Customer access">
+        Customers log in with email to view their invoices.
+      </Step>
+    </Steps>
+  </Tab>
+</Tabs>
+
+## Best Practices
+
+<Note>
+  **Pro Tip:** Add notes to customer profiles about their preferences (payment terms, invoicing schedule, communication preferences). This helps maintain consistent service.
+</Note>
+
+1. **Keep contact info updated** - Verify email addresses are current
+2. **Use customer notes** - Document preferences and special instructions
+3. **Monitor inactive customers** - Re-engage before they churn
+4. **Track payment patterns** - Adjust terms for slow payers
+5. **Segment customers** - Treat top customers differently
+6. **Regular communication** - Don't only contact when invoicing
+7. **Use templates** - Streamline recurring customer invoices
+8. **Review analytics monthly** - Spot trends early
+
+## Keyboard Shortcuts
+
+- `N` - New customer
+- `/` - Focus search
+- `F` - Open filters
+- `I` - Create invoice for selected customer
+- `Space` - Open customer details
+- `Esc` - Close details
+
+## Troubleshooting
+
+**Customer not receiving invoices?**
+- Verify email address is correct
+- Check spam folder
+- Confirm email settings in Settings → Invoicing
+- Test with different email address
+
+**Duplicate customers appearing?**
+- Midday creates new customer if email doesn't match
+- Merge duplicates by updating email on one
+- Use consistent email addresses
+
+**Wrong revenue totals?**
+- Check if invoices are assigned to correct customer
+- Verify invoice status (draft invoices don't count)
+- Refunded invoices reduce total
+- Check currency conversions
+
+**Customer portal not working?**
+- Ensure portal is enabled in settings
+- Verify customer has received portal link
+- Check if customer email matches portal login
+- Try password reset if needed
+
+## Analytics Reports
+
+Generate customer reports:
+
+- **Top Customers Report:** Revenue ranking
+- **Payment Behavior Report:** Payment patterns and trends
+- **Customer Acquisition Report:** New customers over time
+- **Churn Report:** Lost customers and reasons
+- **Revenue by Customer Report:** Detailed revenue breakdown
+
+Access reports from the Reports section or ask the [AI Assistant](/features/assistant).

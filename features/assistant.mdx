@@ -1,0 +1,508 @@
+---
+title: AI Assistant
+description: Get instant financial insights, generate reports, and answer business questions with Midday's AI-powered assistant.
+---
+
+## Overview
+
+Midday's AI Assistant is your intelligent financial companion that understands your business data and provides insights, answers questions, and generates visualizations. From revenue analysis to expense tracking, the assistant helps you make data-driven decisions.
+
+## Starting a Conversation
+
+### Access the Assistant
+
+<Steps>
+  <Step title="Open chat">
+    Click the chat icon in the sidebar or navigate to the home page.
+  </Step>
+  
+  <Step title="Ask a question">
+    Type your question in natural language - no special syntax required.
+  </Step>
+  
+  <Step title="Get insights">
+    The assistant analyzes your data and provides answers with visualizations.
+  </Step>
+</Steps>
+
+### Example Queries
+
+Ask the assistant anything about your business:
+
+```typescript
+const exampleQueries = [
+  // Revenue & Income
+  "What was my revenue last month?",
+  "Show me revenue trends for Q1",
+  "Compare revenue this year vs last year",
+  
+  // Expenses
+  "What are my biggest expenses?",
+  "Show me spending by category",
+  "How much did I spend on marketing?",
+  
+  // Transactions
+  "Find all transactions over $1000",
+  "Show uncategorized transactions",
+  "What did I spend at Acme Corp?",
+  
+  // Invoicing
+  "How many unpaid invoices do I have?",
+  "What's my average time to payment?",
+  "Show me overdue invoices",
+  
+  // Time & Productivity
+  "How many hours did I track this week?",
+  "Show me time by project",
+  "What's my most profitable project?",
+  
+  // General
+  "Give me a business overview",
+  "Show me my burn rate",
+  "What's my profit margin?"
+]
+```
+
+<Note>
+  The assistant understands natural language, so you can ask questions conversationally. No need to use specific commands or syntax.
+</Note>
+
+## Chat Interface
+
+### Conversation Flow
+
+The chat interface adapts to your needs:
+
+<Tabs>
+  <Tab title="Text Responses">
+    ```typescript
+    // Simple text answers for quick questions
+    const textResponse = {
+      type: "text",
+      content: "Your revenue last month was $42,500, up 15% from the previous month.",
+      context: {
+        period: "2026-02",
+        currency: "USD"
+      }
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Data Visualizations">
+    ```typescript
+    // Charts and graphs for data-heavy queries
+    const chartResponse = {
+      type: "artifact",
+      artifactType: "chart",
+      data: {/* Chart data */},
+      config: {
+        type: "line",
+        title: "Revenue Trend",
+        period: "6mo"
+      }
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Tables">
+    ```typescript
+    // Structured data in table format
+    const tableResponse = {
+      type: "artifact",
+      artifactType: "table",
+      data: {/* Table data */},
+      sortable: true,
+      filterable: true
+    }
+    ```
+  </Tab>
+</Tabs>
+
+### Canvas (Artifacts)
+
+When the assistant generates visualizations or detailed data, they appear in the **Canvas** - a side panel that displays:
+
+- **Charts:** Line, bar, pie, area charts
+- **Tables:** Sortable, filterable data tables
+- **Metrics:** Key performance indicators
+- **Reports:** Detailed breakdowns
+
+<Card title="Canvas Features" icon="chart-line">
+  - Resize and zoom charts
+  - Export visualizations as images
+  - Download data as CSV
+  - Share artifacts with team
+  - Pin important charts to dashboard
+</Card>
+
+## AI Capabilities
+
+### Data Analysis
+
+The assistant can analyze:
+
+```typescript
+const analysisCapabilities = {
+  transactions: {
+    aggregation: ["sum", "average", "count", "min", "max"],
+    grouping: ["category", "merchant", "date", "account"],
+    timeframes: ["day", "week", "month", "quarter", "year"],
+    filtering: ["amount", "date", "category", "status"]
+  },
+  
+  invoices: {
+    metrics: ["total", "paid", "unpaid", "overdue"],
+    analytics: ["payment_time", "customer_lifetime_value"],
+    forecasting: ["revenue_projection", "cash_flow"]
+  },
+  
+  timeTracking: {
+    calculations: ["total_hours", "billable_hours", "hourly_rate"],
+    breakdown: ["by_project", "by_date", "by_team_member"],
+    profitability: ["project_margin", "utilization_rate"]
+  }
+}
+```
+
+### Tool Integration
+
+The assistant uses specialized tools to answer your questions:
+
+**Available Tools:**
+- `get_transactions` - Fetch and analyze transaction data
+- `get_burn_rate` - Calculate monthly burn rate
+- `get_revenue` - Analyze revenue and income
+- `get_expenses` - Break down expense data
+- `get_profit` - Calculate profit and margins
+- `get_invoices` - Access invoice data
+- `get_time_entries` - Retrieve time tracking data
+- `search_documents` - Find documents in Vault
+
+<Note>
+  The assistant automatically selects the right tools based on your question. You don't need to specify which tool to use.
+</Note>
+
+### Context Awareness
+
+The assistant understands context from:
+
+```typescript
+const contextSources = {
+  // Dashboard filters (automatic)
+  metricsFilter: {
+    period: "30d",
+    from: "2026-02-01",
+    to: "2026-02-28",
+    currency: "USD",
+    revenueType: "all"
+  },
+  
+  // User preferences
+  userContext: {
+    timezone: "America/New_York",
+    country: "US",
+    fiscalYearStart: "01-01"
+  },
+  
+  // Team settings
+  teamContext: {
+    defaultCurrency: "USD",
+    teamSize: 5,
+    connectedAccounts: 3
+  }
+}
+```
+
+The assistant automatically uses your current dashboard filter settings as defaults for queries.
+
+## Suggested Prompts
+
+When starting a new chat, the assistant suggests relevant prompts:
+
+<Steps>
+  <Step title="Smart suggestions">
+    Prompts are personalized based on:
+    - Recent activity
+    - Pending tasks
+    - Unusual patterns in data
+    - Time of month (e.g., end of month = financial close tasks)
+  </Step>
+  
+  <Step title="Quick start">
+    Click any suggestion to instantly get insights without typing.
+  </Step>
+  
+  <Step title="Dynamic updates">
+    Suggestions update as you interact with the assistant.
+  </Step>
+</Steps>
+
+## Agent Types
+
+The assistant uses specialized agents for different tasks:
+
+### General Agent
+
+Handles most queries:
+- Financial analysis
+- Data exploration
+- Report generation
+- Question answering
+
+### Banking Agent
+
+<Warning>
+  Some features require connected bank accounts. You'll be prompted to connect accounts if needed.
+</Warning>
+
+Specializes in:
+- Transaction analysis
+- Bank account reconciliation
+- Cash flow forecasting
+- Account comparisons
+
+## Chart Types
+
+The assistant generates various visualizations:
+
+### Available Charts
+
+```typescript
+const chartTypes = [
+  "line",           // Trends over time
+  "bar",            // Comparisons
+  "area",           // Cumulative trends
+  "pie",            // Proportions
+  "donut",          // Proportions with center space
+  "radar",          // Multi-dimensional data
+  "scatter",        // Correlations
+  "heatmap",        // Intensity maps
+  "funnel",         // Conversion flows
+  "waterfall",      // Sequential changes
+  "treemap",        // Hierarchical data
+  "gauge",          // Single metrics
+  "metric_card"     // KPI cards
+]
+```
+
+The assistant automatically selects the best chart type for your question.
+
+## Exporting Insights
+
+### Export Chart
+
+<Steps>
+  <Step title="Open canvas">
+    Charts and visualizations appear in the canvas panel on the right.
+  </Step>
+  
+  <Step title="Export options">
+    Click the export button to choose format:
+    - PNG image
+    - SVG vector
+    - CSV data
+    - JSON data
+  </Step>
+  
+  <Step title="Download">
+    File downloads immediately with descriptive filename.
+  </Step>
+</Steps>
+
+### Share Insights
+
+Share insights with team members:
+- Copy shareable link to conversation
+- Export and send chart images
+- Invite team members to chat (coming soon)
+
+## Conversation History
+
+### Saving Chats
+
+All conversations are automatically saved:
+
+```typescript
+const chatHistory = {
+  autoSave: true,              // Saves as you type
+  persistence: "permanent",    // Never expires
+  searchable: true,           // Find old conversations
+  shareable: true             // Share with team
+}
+```
+
+### Finding Past Chats
+
+Access previous conversations:
+- Click chat history icon
+- Browse by date
+- Search by topic or keywords
+- Resume any conversation
+
+<Note>
+  Each conversation has its own context. Starting a new chat gives you a fresh start without previous conversation history.
+</Note>
+
+## Advanced Features
+
+### Multi-step Reasoning
+
+The assistant can handle complex, multi-part questions:
+
+```typescript
+const complexQuery = [
+  "Compare my revenue from Q1 2026 to Q1 2025",
+  "then break it down by category",
+  "and show me which categories grew the most"
+]
+// Assistant handles all three parts sequentially
+```
+
+### Follow-up Questions
+
+Ask follow-ups naturally:
+
+```
+You: "Show me my expenses last month"
+Assistant: [Shows expense breakdown]
+
+You: "What about the month before?"
+Assistant: [Adjusts to previous month]
+
+You: "Compare them side by side"
+Assistant: [Shows comparison chart]
+```
+
+### Filters and Refinements
+
+Refine results with natural language:
+
+```
+You: "Show transactions over $500"
+Assistant: [Shows filtered list]
+
+You: "Only in the Software category"
+Assistant: [Further filters]
+
+You: "Exclude subscriptions"
+Assistant: [Final refined list]
+```
+
+## Privacy & Data Usage
+
+### What the Assistant Knows
+
+<Card title="Assistant Access" icon="shield">
+  The assistant has access to:
+  - ✅ Your transactions
+  - ✅ Your invoices
+  - ✅ Your time entries
+  - ✅ Your documents (metadata only)
+  - ✅ Your team settings
+</Card>
+
+### What the Assistant Doesn't Know
+
+- ❌ Other teams' data
+- ❌ Your password or auth tokens
+- ❌ Personal emails or messages
+- ❌ Data from disconnected accounts
+
+### Data Retention
+
+```typescript
+const privacy = {
+  conversationStorage: "encrypted",
+  dataAnonymization: false,      // Your data stays yours
+  thirdPartySharing: false,      // Never shared
+  trainingData: false,           // Not used for AI training
+  deletion: "immediate"           // Delete chat = delete all data
+}
+```
+
+<Warning>
+  Midday uses AI models from OpenAI (GPT-4) and Anthropic (Claude). Your data is sent to these providers for processing but is not stored or used for training.
+</Warning>
+
+## Best Practices
+
+<Note>
+  **Pro Tip:** Start with broad questions and narrow down with follow-ups. This helps the assistant understand your goal better.
+</Note>
+
+1. **Be specific with time ranges** - "last month" vs "February 2026"
+2. **Use currency if ambiguous** - "Show revenue in EUR"
+3. **Ask for comparisons** - "Compare X vs Y" for better insights
+4. **Follow up for details** - Start broad, then drill down
+5. **Save useful charts** - Export and document important insights
+6. **Review suggested prompts** - They're personalized to your data
+
+## Keyboard Shortcuts
+
+- `Cmd/Ctrl + K` - Open chat from anywhere
+- `Cmd/Ctrl + Enter` - Send message
+- `↑` - Edit last message
+- `Esc` - Close chat
+- `Cmd/Ctrl + N` - New conversation
+
+## Troubleshooting
+
+**Assistant not responding?**
+- Check your internet connection
+- Refresh the page
+- Try a simpler question first
+- Check if any bank accounts are disconnected
+
+**Wrong results?**
+- Be more specific with your question
+- Check the time period mentioned
+- Verify data is synced (recent transactions may take time)
+- Ask a follow-up to clarify
+
+**Canvas not showing?**
+- Some questions only return text answers
+- Try asking for a "chart" or "breakdown"
+- Click artifact type selector if multiple options
+
+**Tool errors?**
+- "Bank account required" = Connect bank accounts first
+- "No data found" = Check date range or filters
+- "Rate limit" = Wait a moment and try again
+
+## Examples by Use Case
+
+### Monthly Close
+
+```
+"Give me a financial overview for February 2026"
+"Show me all uncategorized transactions"
+"What's my profit margin this month?"
+"Compare revenue to last month"
+```
+
+### Tax Preparation
+
+```
+"Show all deductible expenses for 2025"
+"Break down expenses by tax category"
+"Find all receipts from Q4"
+"What was my total income last year?"
+```
+
+### Client Billing
+
+```
+"How many hours did I track for Acme Corp?"
+"Show unpaid invoices for February"
+"What's my average invoice amount?"
+"Compare billable vs non-billable hours"
+```
+
+### Business Planning
+
+```
+"What's my burn rate?"
+"Show revenue trend for the last 6 months"
+"Which projects are most profitable?"
+"Forecast revenue for next quarter"
+```

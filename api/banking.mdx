@@ -1,0 +1,412 @@
+---
+title: 'Banking'
+description: 'Banking API endpoints for account connections, transactions, and balance management'
+---
+
+The Banking API provides endpoints to connect bank accounts through multiple providers (Plaid, GoCardless, EnableBanking), manage connections, and retrieve account data.
+
+## Plaid Integration
+
+### plaidLink
+
+Create a Plaid Link token to initialize the Plaid Link flow for connecting bank accounts.
+
+<ParamField body="language" type="string" optional>
+  The language code for the Plaid Link interface (e.g., "en", "es")
+</ParamField>
+
+<ParamField body="accessToken" type="string" optional>
+  Existing access token for re-authentication or update mode
+</ParamField>
+
+<ResponseField name="data" type="object">
+  <Expandable title="properties">
+    <ResponseField name="link_token" type="string">
+      Token used to initialize Plaid Link
+    </ResponseField>
+    <ResponseField name="expiration" type="string">
+      ISO 8601 timestamp when the link token expires
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+```typescript
+import { trpc } from '@/lib/trpc';
+
+const { data } = await trpc.banking.plaidLink.mutate({
+  language: 'en',
+});
+
+// Use link_token to initialize Plaid Link
+```
+
+### plaidExchange
+
+Exchange a Plaid public token for an access token after user completes the Link flow.
+
+<ParamField body="token" type="string" required>
+  The public token received from Plaid Link onSuccess callback
+</ParamField>
+
+<ResponseField name="data" type="object">
+  <Expandable title="properties">
+    <ResponseField name="access_token" type="string">
+      The Plaid access token for the connected account
+    </ResponseField>
+    <ResponseField name="item_id" type="string">
+      The Plaid item ID
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+```typescript
+const { data } = await trpc.banking.plaidExchange.mutate({
+  token: publicToken,
+});
+
+console.log('Access token:', data.access_token);
+```
+
+## GoCardless Integration
+
+### gocardlessLink
+
+Build a GoCardless Link URL to initiate the bank connection flow.
+
+<ParamField body="institutionId" type="string" required>
+  The GoCardless institution ID
+</ParamField>
+
+<ParamField body="agreement" type="string" optional>
+  End user agreement ID if already created
+</ParamField>
+
+<ParamField body="redirect" type="string" required>
+  The redirect URL after completing the flow
+</ParamField>
+
+<ResponseField name="data" type="object">
+  <Expandable title="properties">
+    <ResponseField name="link" type="string">
+      The URL to redirect the user to for bank connection
+    </ResponseField>
+    <ResponseField name="requisition_id" type="string">
+      The requisition ID for this connection attempt
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+```typescript
+const { data } = await trpc.banking.gocardlessLink.mutate({
+  institutionId: 'SANDBOXFINANCE_SFIN0000',
+  redirect: 'https://app.example.com/banking/callback',
+});
+
+window.location.href = data.link;
+```
+
+### gocardlessAgreement
+
+Create an end user agreement for GoCardless.
+
+<ParamField body="institutionId" type="string" required>
+  The GoCardless institution ID
+</ParamField>
+
+<ParamField body="maxHistoricalDays" type="number" optional>
+  Maximum number of historical days to fetch (default: 90)
+</ParamField>
+
+<ParamField body="accessValidForDays" type="number" optional>
+  Number of days the access is valid (default: 90)
+</ParamField>
+
+<ResponseField name="data" type="object">
+  <Expandable title="properties">
+    <ResponseField name="id" type="string">
+      The agreement ID
+    </ResponseField>
+    <ResponseField name="created" type="string">
+      ISO 8601 timestamp when the agreement was created
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## EnableBanking Integration
+
+### enablebankingLink
+
+Create an EnableBanking authentication URL for connecting European bank accounts.
+
+<ParamField body="institutionId" type="string" required>
+  The institution ID from the institutions list
+</ParamField>
+
+<ParamField body="countryCode" type="string" optional>
+  Two-letter country code (e.g., "GB", "DE")
+</ParamField>
+
+<ParamField body="state" type="string" optional>
+  State parameter for OAuth flow security
+</ParamField>
+
+<ResponseField name="data" type="object">
+  <Expandable title="properties">
+    <ResponseField name="url" type="string">
+      The authentication URL to redirect the user to
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+```typescript
+const { data } = await trpc.banking.enablebankingLink.mutate({
+  institutionId: 'barclays_gb',
+  countryCode: 'GB',
+  state: randomState,
+});
+
+window.location.href = data.url;
+```
+
+### enablebankingExchange
+
+Exchange an authorization code for EnableBanking session and account data.
+
+<ParamField body="code" type="string" required>
+  The authorization code from the OAuth callback
+</ParamField>
+
+<ResponseField name="data" type="object">
+  <Expandable title="properties">
+    <ResponseField name="session_id" type="string">
+      The session ID for the connection
+    </ResponseField>
+    <ResponseField name="expires_at" type="string">
+      ISO 8601 timestamp when the session expires
+    </ResponseField>
+    <ResponseField name="accounts" type="array">
+      Array of account objects
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Connection Management
+
+### connectionStatus
+
+<Note>Internal procedure - requires internal authentication</Note>
+
+Get the status of a bank connection.
+
+<ParamField body="provider" type="string" required>
+  Provider name: "plaid", "gocardless", or "enablebanking"
+</ParamField>
+
+<ParamField body="id" type="string" required>
+  The connection/item ID
+</ParamField>
+
+<ParamField body="accessToken" type="string" required>
+  The access token for the connection
+</ParamField>
+
+<ResponseField name="data" type="object">
+  <Expandable title="properties">
+    <ResponseField name="status" type="string">
+      Connection status: "connected", "disconnected", "error"
+    </ResponseField>
+    <ResponseField name="lastSync" type="string" optional>
+      ISO 8601 timestamp of last successful sync
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### deleteConnection
+
+<Note>Internal procedure - requires internal authentication</Note>
+
+Delete a bank connection from the provider.
+
+<ParamField body="provider" type="string" required>
+  Provider name: "plaid", "gocardless", or "enablebanking"
+</ParamField>
+
+<ParamField body="id" type="string" required>
+  The connection/item ID
+</ParamField>
+
+<ParamField body="accessToken" type="string" required>
+  The access token for the connection
+</ParamField>
+
+<ResponseField name="data" type="object">
+  <Expandable title="properties">
+    <ResponseField name="success" type="boolean">
+      Whether the deletion was successful
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### connectionByReference
+
+<Note>Internal procedure - requires internal authentication</Note>
+
+Get a GoCardless connection by reference ID.
+
+<ParamField body="reference" type="string" required>
+  The reference ID
+</ParamField>
+
+<ResponseField name="data" type="object">
+  <Expandable title="properties">
+    <ResponseField name="id" type="string">
+      The requisition ID
+    </ResponseField>
+    <ResponseField name="accounts" type="array">
+      Array of account IDs
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Account Data
+
+### getProviderAccounts
+
+Retrieve all accounts from a provider connection.
+
+<ParamField body="provider" type="string" required>
+  Provider name: "plaid", "gocardless", or "enablebanking"
+</ParamField>
+
+<ParamField body="id" type="string" required>
+  The connection/item ID
+</ParamField>
+
+<ParamField body="accessToken" type="string" required>
+  The access token for the connection
+</ParamField>
+
+<ParamField body="institutionId" type="string" optional>
+  The institution ID (required for some providers)
+</ParamField>
+
+<ResponseField name="data" type="array">
+  Array of account objects sorted by balance (highest first)
+  <Expandable title="Account properties">
+    <ResponseField name="id" type="string">
+      The account ID from the provider
+    </ResponseField>
+    <ResponseField name="name" type="string">
+      Account name
+    </ResponseField>
+    <ResponseField name="currency" type="string">
+      Three-letter currency code (ISO 4217)
+    </ResponseField>
+    <ResponseField name="balance" type="object">
+      <Expandable title="properties">
+        <ResponseField name="amount" type="number">
+          Current balance amount
+        </ResponseField>
+        <ResponseField name="currency" type="string">
+          Currency code
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+    <ResponseField name="type" type="string">
+      Account type (e.g., "depository", "credit")
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+```typescript
+const { data } = await trpc.banking.getProviderAccounts.query({
+  provider: 'plaid',
+  id: itemId,
+  accessToken: accessToken,
+});
+
+data.forEach(account => {
+  console.log(`${account.name}: ${account.balance.amount} ${account.balance.currency}`);
+});
+```
+
+### getBalance
+
+<Note>Internal procedure - requires internal authentication</Note>
+
+Get the current balance for a specific account.
+
+<ParamField body="provider" type="string" required>
+  Provider name
+</ParamField>
+
+<ParamField body="id" type="string" required>
+  The account ID
+</ParamField>
+
+<ParamField body="accessToken" type="string" required>
+  The access token
+</ParamField>
+
+<ParamField body="accountType" type="string" required>
+  The account type
+</ParamField>
+
+<ResponseField name="data" type="object">
+  <Expandable title="properties">
+    <ResponseField name="amount" type="number">
+      Current balance
+    </ResponseField>
+    <ResponseField name="currency" type="string">
+      Currency code
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### getProviderTransactions
+
+<Note>Internal procedure - requires internal authentication</Note>
+
+Retrieve transactions from a provider account.
+
+<ParamField body="provider" type="string" required>
+  Provider name
+</ParamField>
+
+<ParamField body="accountId" type="string" required>
+  The account ID
+</ParamField>
+
+<ParamField body="accessToken" type="string" required>
+  The access token
+</ParamField>
+
+<ParamField body="accountType" type="string" required>
+  The account type
+</ParamField>
+
+<ParamField body="latest" type="boolean" optional>
+  Whether to fetch only the latest transactions
+</ParamField>
+
+<ResponseField name="data" type="array">
+  Array of transaction objects from the provider
+</ResponseField>
+
+## Exchange Rates
+
+### rates
+
+<Note>Internal procedure - requires internal authentication</Note>
+
+Get current exchange rates.
+
+<ResponseField name="data" type="object">
+  Object with currency codes as keys and exchange rates as values
+</ResponseField>
+
+```typescript
+const { data } = await trpc.banking.rates.query();
+
+console.log('USD to EUR:', data.EUR);
+```

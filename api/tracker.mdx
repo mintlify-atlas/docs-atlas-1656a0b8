@@ -1,0 +1,411 @@
+---
+title: 'Time Tracker'
+description: 'Time tracking API for managing projects, entries, and timers'
+---
+
+The Time Tracker API provides endpoints for tracking time spent on projects, managing time entries, and controlling active timers.
+
+## Projects
+
+### trackerProjects.get
+
+Retrieve a list of tracker projects.
+
+<ParamField query="search" type="string" optional>
+  Search query for project name
+</ParamField>
+
+<ParamField query="status" type="string" optional>
+  Filter by status: "active" | "archived"
+</ParamField>
+
+<ParamField query="sort" type="array" optional>
+  Array of sort objects
+</ParamField>
+
+```typescript
+import { trpc } from '@/lib/trpc';
+
+const projects = await trpc.trackerProjects.get.query({
+  status: 'active',
+});
+```
+
+### trackerProjects.getById
+
+Get a specific project by ID.
+
+<ParamField query="id" type="string" required>
+  Project UUID
+</ParamField>
+
+<ResponseField name="project" type="object">
+  <Expandable title="Project properties">
+    <ResponseField name="id" type="string">
+      Project UUID
+    </ResponseField>
+    <ResponseField name="name" type="string">
+      Project name
+    </ResponseField>
+    <ResponseField name="description" type="string" optional>
+      Project description
+    </ResponseField>
+    <ResponseField name="status" type="string">
+      "active" | "archived"
+    </ResponseField>
+    <ResponseField name="billable" type="boolean">
+      Whether the project is billable
+    </ResponseField>
+    <ResponseField name="rate" type="number" optional>
+      Hourly rate for billable projects
+    </ResponseField>
+    <ResponseField name="currency" type="string" optional>
+      Currency code for the rate
+    </ResponseField>
+    <ResponseField name="customerId" type="string" optional>
+      Associated customer UUID
+    </ResponseField>
+    <ResponseField name="totalDuration" type="number">
+      Total tracked seconds across all entries
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+```typescript
+const project = await trpc.trackerProjects.getById.query({
+  id: 'project-uuid',
+});
+```
+
+### trackerProjects.upsert
+
+Create a new project or update an existing one.
+
+<ParamField body="id" type="string" optional>
+  Project UUID (for updates, omit for new projects)
+</ParamField>
+
+<ParamField body="name" type="string" required>
+  Project name
+</ParamField>
+
+<ParamField body="description" type="string" optional>
+  Project description
+</ParamField>
+
+<ParamField body="status" type="string" optional>
+  "active" | "archived" (default: "active")
+</ParamField>
+
+<ParamField body="billable" type="boolean" optional>
+  Whether the project is billable (default: false)
+</ParamField>
+
+<ParamField body="rate" type="number" optional>
+  Hourly rate for billable projects
+</ParamField>
+
+<ParamField body="currency" type="string" optional>
+  Currency code (required if rate is set)
+</ParamField>
+
+<ParamField body="customerId" type="string" optional>
+  Customer UUID to associate with this project
+</ParamField>
+
+```typescript
+// Create new billable project
+const project = await trpc.trackerProjects.upsert.mutate({
+  name: 'Website Redesign',
+  description: 'Complete redesign of corporate website',
+  billable: true,
+  rate: 150,
+  currency: 'USD',
+  customerId: 'customer-uuid',
+});
+
+// Update existing project
+await trpc.trackerProjects.upsert.mutate({
+  id: 'project-uuid',
+  status: 'archived',
+});
+```
+
+### trackerProjects.delete
+
+Delete a project.
+
+<ParamField body="id" type="string" required>
+  Project UUID
+</ParamField>
+
+```typescript
+await trpc.trackerProjects.delete.mutate({
+  id: 'project-uuid',
+});
+```
+
+## Time Entries
+
+### trackerEntries.byDate
+
+Get time entries for a specific date.
+
+<ParamField query="date" type="string" required>
+  Date in ISO format (YYYY-MM-DD)
+</ParamField>
+
+<ResponseField name="entries" type="array">
+  Array of time entry objects for the specified date
+</ResponseField>
+
+```typescript
+const entries = await trpc.trackerEntries.byDate.query({
+  date: '2024-11-15',
+});
+```
+
+### trackerEntries.byRange
+
+Get time entries within a date range.
+
+<ParamField query="from" type="string" required>
+  Start date (ISO format)
+</ParamField>
+
+<ParamField query="to" type="string" required>
+  End date (ISO format)
+</ParamField>
+
+<ParamField query="projectId" type="string" optional>
+  Filter by project UUID
+</ParamField>
+
+<ResponseField name="result" type="object">
+  Object with dates as keys and arrays of entries as values
+</ResponseField>
+
+```typescript
+const { result } = await trpc.trackerEntries.byRange.query({
+  from: '2024-11-01',
+  to: '2024-11-30',
+  projectId: 'project-uuid',
+});
+
+// result = {
+//   '2024-11-01': [entry1, entry2],
+//   '2024-11-02': [entry3],
+//   ...
+// }
+```
+
+### trackerEntries.upsert
+
+Create or update time entries.
+
+<ParamField body="entries" type="array" required>
+  Array of entry objects to upsert
+</ParamField>
+
+<CodeGroup>
+```typescript Entry structure
+type TimeEntry = {
+  id?: string;          // UUID (omit for new entries)
+  projectId: string;    // Project UUID
+  date: string;         // Date (YYYY-MM-DD)
+  duration: number;     // Duration in seconds
+  description?: string; // Entry description
+  start?: string;       // Start time (ISO 8601)
+  stop?: string;        // Stop time (ISO 8601)
+};
+```
+</CodeGroup>
+
+```typescript
+await trpc.trackerEntries.upsert.mutate({
+  entries: [
+    {
+      projectId: 'project-uuid',
+      date: '2024-11-15',
+      duration: 7200, // 2 hours in seconds
+      description: 'Frontend development',
+    },
+  ],
+});
+```
+
+### trackerEntries.delete
+
+Delete a time entry.
+
+<ParamField body="id" type="string" required>
+  Entry UUID
+</ParamField>
+
+```typescript
+await trpc.trackerEntries.delete.mutate({
+  id: 'entry-uuid',
+});
+```
+
+## Active Timer
+
+### trackerEntries.startTimer
+
+Start a new timer.
+
+<ParamField body="projectId" type="string" required>
+  Project UUID
+</ParamField>
+
+<ParamField body="description" type="string" optional>
+  Description of what you're working on
+</ParamField>
+
+<ParamField body="assignedId" type="string" optional>
+  User UUID (defaults to current user)
+</ParamField>
+
+<ResponseField name="timer" type="object">
+  <Expandable title="Timer properties">
+    <ResponseField name="id" type="string">
+      Timer entry UUID
+    </ResponseField>
+    <ResponseField name="projectId" type="string">
+      Project UUID
+    </ResponseField>
+    <ResponseField name="start" type="string">
+      Start timestamp (ISO 8601)
+    </ResponseField>
+    <ResponseField name="description" type="string" optional>
+      Timer description
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+```typescript
+const timer = await trpc.trackerEntries.startTimer.mutate({
+  projectId: 'project-uuid',
+  description: 'Working on authentication',
+});
+
+console.log('Timer started at:', timer.start);
+```
+
+### trackerEntries.stopTimer
+
+Stop the active timer.
+
+<ParamField body="assignedId" type="string" optional>
+  User UUID (defaults to current user)
+</ParamField>
+
+<ResponseField name="entry" type="object">
+  The completed time entry with calculated duration
+</ResponseField>
+
+```typescript
+const entry = await trpc.trackerEntries.stopTimer.mutate({});
+
+console.log('Tracked duration:', entry.duration, 'seconds');
+```
+
+### trackerEntries.getCurrentTimer
+
+Get the currently active timer.
+
+<ParamField query="assignedId" type="string" optional>
+  User UUID (defaults to current user)
+</ParamField>
+
+<ResponseField name="timer" type="object" nullable>
+  Active timer object or null if no timer is running
+</ResponseField>
+
+```typescript
+const timer = await trpc.trackerEntries.getCurrentTimer.query();
+
+if (timer) {
+  console.log('Timer running for project:', timer.projectId);
+} else {
+  console.log('No active timer');
+}
+```
+
+### trackerEntries.getTimerStatus
+
+Get timer status information.
+
+<ParamField query="assignedId" type="string" optional>
+  User UUID (defaults to current user)
+</ParamField>
+
+<ResponseField name="status" type="object">
+  <Expandable title="properties">
+    <ResponseField name="isRunning" type="boolean">
+      Whether a timer is currently active
+    </ResponseField>
+    <ResponseField name="entry" type="object" optional>
+      Active timer entry if running
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+```typescript
+const { isRunning, entry } = await trpc.trackerEntries.getTimerStatus.query();
+
+if (isRunning) {
+  const elapsed = Date.now() - new Date(entry.start).getTime();
+  console.log('Timer running for:', Math.floor(elapsed / 1000), 'seconds');
+}
+```
+
+## Invoicing from Time Tracking
+
+Billable projects can be converted to invoices. See the [Invoice API](/api/invoices#createfromtracker) for details.
+
+```typescript
+// Create invoice from tracked time
+const invoice = await trpc.invoice.createFromTracker.mutate({
+  projectId: 'project-uuid',
+  dateFrom: '2024-11-01',
+  dateTo: '2024-11-30',
+});
+
+// Invoice will have a line item with:
+// - Total hours tracked in the period
+// - Project's hourly rate
+// - Total amount calculated automatically
+```
+
+## Example: Complete Workflow
+
+```typescript
+// 1. Create a billable project
+const project = await trpc.trackerProjects.upsert.mutate({
+  name: 'Client Website',
+  billable: true,
+  rate: 150,
+  currency: 'USD',
+  customerId: 'customer-uuid',
+});
+
+// 2. Start tracking time
+const timer = await trpc.trackerEntries.startTimer.mutate({
+  projectId: project.id,
+  description: 'Homepage redesign',
+});
+
+// ... work on the project ...
+
+// 3. Stop the timer
+const entry = await trpc.trackerEntries.stopTimer.mutate({});
+console.log('Tracked:', entry.duration / 3600, 'hours');
+
+// 4. At end of month, create invoice
+const invoice = await trpc.invoice.createFromTracker.mutate({
+  projectId: project.id,
+  dateFrom: '2024-11-01',
+  dateTo: '2024-11-30',
+});
+```

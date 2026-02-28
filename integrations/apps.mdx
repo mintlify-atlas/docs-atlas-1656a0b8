@@ -1,0 +1,508 @@
+---
+title: "App Integrations"
+description: "Connect Slack, WhatsApp, and Fortnox to capture receipts and export data"
+---
+
+Midday integrates with communication and accounting apps to streamline receipt capture and data export.
+
+## App Store Architecture
+
+All app integrations are managed through the app store system (`~/workspace/source/packages/app-store/`):
+
+```typescript
+// Each app has a standardized config structure
+export const baseConfig = {
+  name: "App Name",
+  id: "app-id",
+  category: "capture" | "accounting",
+  active: true,
+  beta?: boolean,
+  logo: Logo,
+  short_description: "Brief description",
+  description: "Full description",
+  settings: [...],
+};
+```
+
+### Categories
+
+- **Capture**: Apps for capturing receipts and documents (Slack, WhatsApp)
+- **Accounting**: Apps for exporting data (Fortnox, Xero, QuickBooks)
+
+## Slack
+
+Connect Slack to receive transaction notifications and upload receipts directly from channels.
+
+### Features
+
+- Transaction notifications in chosen channel
+- Invoice notifications (paid/overdue)
+- Receipt upload via file sharing
+- Smart matching with approval workflow
+- Thread-based match confirmations
+
+### Configuration
+
+<Steps>
+  <Step title="Install Slack App">
+    Users install via OAuth flow:
+
+    ```typescript
+    import { onInitialize } from "@midday/app-store/slack/initialize";
+
+    // Trigger OAuth flow
+    await onInitialize({
+      accessToken: userAccessToken,
+      onComplete: () => {
+        // Handle completion
+      }
+    });
+    ```
+  </Step>
+
+  <Step title="OAuth Scopes">
+    Required Slack scopes:
+
+    ```typescript
+    scopes: [
+      "incoming-webhook",      // Post to private channels
+      "chat:write",           // Post messages
+      "chat:write.public",    // Post to public channels
+      "groups:history",       // Read private channel messages
+      "channels:history",     // Read public channel messages
+      "channels:join",        // Auto-join channels
+      "files:read",           // Download shared files
+      "reactions:write",      // React to messages
+      "users:read",           // Publish App Home views
+    ]
+    ```
+
+    See: `~/workspace/source/packages/app-store/src/slack/server/oauth.ts:16-27`
+  </Step>
+
+  <Step title="Configure Settings">
+    Users can configure notifications:
+
+    ```typescript
+    {
+      transactions: true,     // Notify on new transactions
+      invoices: true,        // Notify on invoice events
+      matches: true,         // Notify on match suggestions
+    }
+    ```
+  </Step>
+</Steps>
+
+### Implementation Details
+
+Location: `~/workspace/source/packages/app-store/src/slack/`
+
+<Accordion title="OAuth Flow">
+  The Slack OAuth flow:
+
+  1. User clicks "Connect" in Midday app store
+  2. `onInitialize` opens popup with Slack OAuth URL
+  3. User authorizes app in Slack
+  4. Slack redirects to callback URL with code
+  5. Backend exchanges code for access token
+  6. Connection stored in database
+  7. Popup posts message to parent window
+  8. Parent window refreshes app list
+
+  See: `~/workspace/source/packages/app-store/src/slack/initialize.ts`
+</Accordion>
+
+<Accordion title="File Upload Processing">
+  When a user shares a file in a channel with the Midday bot:
+
+  1. Slack sends `file_shared` event
+  2. Bot downloads file via `url_private_download`
+  3. Extract data using OCR/document processing
+  4. Match to transactions
+  5. Reply in thread with match suggestion
+  6. User clicks Confirm/Decline button
+
+  See: `~/workspace/source/packages/app-store/src/slack/server/events/file-share.ts`
+</Accordion>
+
+### Notification Examples
+
+<CodeGroup>
+```typescript Transaction Notification
+import { sendTransactionNotification } from "@midday/app-store/slack/server";
+
+await sendTransactionNotification({
+  teamId: team.id,
+  transaction: {
+    amount: -42.50,
+    date: "2024-01-15",
+    description: "Coffee Shop",
+    category: "Meals"
+  }
+});
+```
+
+```typescript Match Notification
+import { sendMatchNotification } from "@midday/app-store/slack/server";
+
+await sendMatchNotification({
+  teamId: team.id,
+  match: {
+    transactionId: "txn_123",
+    inboxId: "inbox_456",
+    confidence: 0.95,
+    receipt: { amount: 42.50, vendor: "Coffee Shop" }
+  },
+  threadTs: messageId // Reply in thread
+});
+```
+</CodeGroup>
+
+### Settings
+
+Slack app settings (`~/workspace/source/packages/app-store/src/slack/config-base.ts:14-42`):
+
+- **Transactions**: Get notified when new transactions are added
+- **Invoices**: Get notified when invoices are paid or overdue
+- **Match Suggestions**: Get notified when receipts are matched or need review
+
+## WhatsApp
+
+Connect WhatsApp to forward receipts and receive match notifications on your phone.
+
+### Features
+
+- Forward receipts via WhatsApp messages
+- Send photos or PDF documents
+- Automatic data extraction
+- Match notifications via WhatsApp
+- One-tap approve/decline buttons
+
+### Configuration
+
+<Steps>
+  <Step title="Set Environment Variables">
+    WhatsApp Business API credentials:
+
+    ```bash
+    WHATSAPP_ACCESS_TOKEN=your_access_token
+    WHATSAPP_PHONE_NUMBER_ID=your_phone_number_id
+    WHATSAPP_VERIFY_TOKEN=your_verify_token
+    WHATSAPP_APP_SECRET=your_app_secret
+    ```
+  </Step>
+
+  <Step title="Configure Webhook">
+    Set webhook URL in Meta Developer Portal:
+    ```
+    https://api.midday.ai/webhook/whatsapp
+    ```
+
+    Verify token must match `WHATSAPP_VERIFY_TOKEN`.
+  </Step>
+
+  <Step title="Connect User">
+    Users connect by:
+    1. Opening WhatsApp Connect dialog in Midday
+    2. Scanning QR code or copying connection code
+    3. Sending code to Midday WhatsApp number
+    4. Receiving confirmation message
+  </Step>
+</Steps>
+
+### Implementation Details
+
+Location: `~/workspace/source/packages/app-store/src/whatsapp/`
+
+<Accordion title="Connection Flow">
+  1. User clicks "Connect" in Midday app store
+  2. App generates unique inbox ID
+  3. Shows QR code and connection text
+  4. User sends inbox ID to WhatsApp number
+  5. Webhook receives message with inbox ID
+  6. Backend creates WhatsApp connection
+  7. Sends confirmation message to user
+
+  See: `~/workspace/source/apps/api/src/rest/routers/webhooks/whatsapp/index.ts:252-332`
+</Accordion>
+
+<Accordion title="Receipt Processing">
+  When a user sends an image or document:
+
+  1. WhatsApp webhook receives message
+  2. Verify user is connected
+  3. Check file type is allowed (image/jpeg, image/png, application/pdf)
+  4. React with hourglass emoji (⏳) to indicate processing
+  5. Trigger upload job with media ID
+  6. Job downloads file from WhatsApp
+  7. Extract data using OCR
+  8. Match to transactions
+  9. Send match notification with approve/decline buttons
+  10. React with checkmark (✓) on success
+
+  See: `~/workspace/source/apps/api/src/rest/routers/webhooks/whatsapp/index.ts:337-401`
+</Accordion>
+
+<Accordion title="Match Buttons">
+  Match notifications include interactive buttons:
+
+  ```typescript
+  {
+    type: "button",
+    reply: {
+      buttons: [
+        {
+          type: "reply",
+          reply: {
+            id: `confirm:${inboxId}:${transactionId}`,
+            title: "✓ Confirm"
+          }
+        },
+        {
+          type: "reply",
+          reply: {
+            id: `decline:${inboxId}:${transactionId}`,
+            title: "✗ Decline"
+          }
+        }
+      ]
+    }
+  }
+  ```
+
+  Button ID format: `{action}:{inboxId}:{transactionId}`
+
+  See: `~/workspace/source/apps/api/src/rest/routers/webhooks/whatsapp/index.ts:406-514`
+</Accordion>
+
+### Webhook Events
+
+WhatsApp Business API sends webhooks for:
+
+- **Text Messages**: Connection codes, commands
+- **Image Messages**: Receipt photos
+- **Document Messages**: Receipt PDFs
+- **Interactive Buttons**: Match approvals/declines
+
+### Allowed File Types
+
+```typescript
+const ALLOWED_MIME_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "application/pdf",
+];
+```
+
+### Settings
+
+WhatsApp settings (`~/workspace/source/packages/app-store/src/whatsapp/config-base.ts:14-33`):
+
+- **Receipt Processing**: Automatically process receipts sent via WhatsApp
+- **Match Notifications**: Get notified when receipts are matched or need review
+
+## Fortnox
+
+Connect Fortnox to export transactions and receipts to your Swedish accounting system.
+
+<Note>
+  Fortnox integration is currently in **Beta**.
+</Note>
+
+### Features
+
+- Manual transaction export as vouchers
+- Automatic receipt attachments
+- Swedish BAS account mapping
+- Finalized voucher creation
+
+### Configuration
+
+<Steps>
+  <Step title="Get OAuth Credentials">
+    Register app in Fortnox Developer Portal and get:
+    - Client ID
+    - Client Secret
+    - Redirect URI
+  </Step>
+
+  <Step title="Set Environment Variables">
+    ```bash
+    FORTNOX_CLIENT_ID=your_client_id
+    FORTNOX_CLIENT_SECRET=your_client_secret
+    FORTNOX_REDIRECT_URI=https://app.midday.ai/oauth/fortnox/callback
+    ```
+  </Step>
+
+  <Step title="Connect via OAuth">
+    Users authorize via Fortnox OAuth flow similar to Slack.
+  </Step>
+</Steps>
+
+### Implementation Details
+
+Location: `~/workspace/source/packages/app-store/src/fortnox/`
+
+<Accordion title="Export Flow">
+  1. User reviews and categorizes transactions in Midday
+  2. Selects transactions to export
+  3. Clicks "Export to Fortnox"
+  4. Midday creates vouchers via Fortnox API
+  5. Attaches receipts to vouchers
+  6. Vouchers created as finalized entries
+</Accordion>
+
+<Accordion title="Account Mapping">
+  Transaction categories map to Fortnox accounts using Swedish BAS:
+
+  - Meals & Entertainment → BAS account 6260
+  - Office Supplies → BAS account 6110
+  - Travel → BAS account 6230
+  - etc.
+
+  Custom mappings can be configured per team.
+</Accordion>
+
+### Settings
+
+Fortnox has no user settings - it's a pure export integration.
+
+## App Management
+
+### Checking Installation Status
+
+```typescript
+import { getInstalledApps } from "@midday/db/queries";
+
+const apps = await getInstalledApps(db, { teamId });
+
+const slackInstalled = apps.find(app => app.id === "slack")?.installed;
+```
+
+### Getting App Settings
+
+```typescript
+import { getAppSettings } from "@midday/db/queries";
+
+const settings = await getAppSettings(db, { 
+  teamId, 
+  appId: "slack" 
+});
+
+if (settings.transactions) {
+  // Send transaction notifications
+}
+```
+
+### Updating Settings
+
+```typescript
+import { updateAppSettings } from "@midday/db/queries";
+
+await updateAppSettings(db, {
+  teamId,
+  appId: "slack",
+  settings: {
+    transactions: false, // Disable transaction notifications
+    invoices: true,
+    matches: true,
+  }
+});
+```
+
+### Disconnecting Apps
+
+```typescript
+import { disconnectApp } from "@midday/db/queries";
+
+await disconnectApp(db, { teamId, appId: "slack" });
+```
+
+## Security
+
+### OAuth Security
+
+All OAuth flows use:
+- State parameter for CSRF protection
+- Secure token storage
+- Token encryption at rest
+- Automatic token refresh
+
+### Webhook Verification
+
+All webhooks verify signatures:
+
+<CodeGroup>
+```typescript Slack Verification
+import { verifySlackRequest } from "@midday/app-store/slack/server";
+
+const isValid = verifySlackRequest({
+  timestamp: request.headers["x-slack-request-timestamp"],
+  signature: request.headers["x-slack-signature"],
+  body: rawBody
+});
+```
+
+```typescript WhatsApp Verification
+import { verifyWebhookSignature } from "@midday/app-store/whatsapp/server";
+
+const isValid = verifyWebhookSignature(
+  rawBody,
+  signature,
+  appSecret
+);
+```
+</CodeGroup>
+
+<Warning>
+  Always verify webhook signatures in production to prevent unauthorized requests.
+</Warning>
+
+## Error Handling
+
+### OAuth Errors
+
+```typescript
+import { OAuthError } from "@midday/app-store/oauth-errors";
+
+try {
+  await handleOAuthCallback(code);
+} catch (error) {
+  if (error instanceof OAuthError) {
+    console.error(error.provider, error.code, error.message);
+  }
+}
+```
+
+### Webhook Errors
+
+Webhook handlers log errors but return 200 to prevent retries:
+
+```typescript
+try {
+  await processWebhook(payload);
+} catch (error) {
+  logger.error("Webhook processing failed", { error });
+  // Still return 200 to prevent infinite retries
+  return { success: true };
+}
+```
+
+## Testing
+
+### Local Webhook Testing
+
+Use ngrok or similar to test webhooks locally:
+
+```bash
+ngrok http 3000
+
+# Update webhook URL in service dashboard
+https://your-ngrok-url.ngrok.io/webhook/slack
+```
+
+### Mock Webhooks
+
+Use the service's test webhook features:
+- Slack: App settings → Event Subscriptions → Resend event
+- WhatsApp: Send test message from Business Manager

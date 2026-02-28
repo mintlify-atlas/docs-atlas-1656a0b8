@@ -1,0 +1,616 @@
+---
+title: Contributing
+description: Learn how to contribute to Midday and help build the future of business management
+---
+
+## Welcome Contributors!
+
+Thank you for your interest in contributing to Midday! This guide will help you get started with contributing to the project.
+
+<Note>
+  Midday is open source under the **AGPL-3.0 license** for non-commercial use. Commercial deployments require a commercial license.
+</Note>
+
+## Getting Started
+
+<Steps>
+  <Step title="Fork the Repository">
+    Fork the repository on GitHub:
+    ```bash
+    # Visit https://github.com/midday-ai/midday
+    # Click "Fork" button
+    ```
+  </Step>
+  
+  <Step title="Clone Your Fork">
+    ```bash
+    git clone https://github.com/YOUR_USERNAME/midday.git
+    cd midday
+    ```
+  </Step>
+  
+  <Step title="Install Bun">
+    Midday requires **Bun 1.3.10**:
+    ```bash
+    curl -fsSL https://bun.sh/install | bash
+    
+    # Verify installation
+    bun --version
+    ```
+  </Step>
+  
+  <Step title="Install Dependencies">
+    ```bash
+    bun install
+    ```
+  </Step>
+  
+  <Step title="Set Up Environment">
+    Create environment variables file:
+    ```bash
+    cp .env.example .env.local
+    ```
+    
+    You'll need:
+    - Supabase project (database, auth, storage)
+    - Banking provider credentials (optional for testing)
+    - API keys for external services (optional)
+  </Step>
+  
+  <Step title="Start Development">
+    ```bash
+    # Start all apps
+    bun dev
+    
+    # Or start specific app
+    bun dev:dashboard  # http://localhost:3001
+    bun dev:api        # http://localhost:3003
+    bun dev:website    # http://localhost:3000
+    ```
+  </Step>
+</Steps>
+
+## Development Workflow
+
+### Creating a Branch
+
+Create a descriptive branch for your changes:
+
+```bash
+git checkout -b feature/add-export-csv
+git checkout -b fix/transaction-sorting
+git checkout -b docs/update-readme
+```
+
+### Making Changes
+
+<Tabs>
+  <Tab title="Code Changes">
+    1. **Find the right location**
+       - Apps: `apps/dashboard`, `apps/api`, etc.
+       - Shared code: `packages/`
+    
+    2. **Follow code style**
+       ```bash
+       # Format code
+       bun format
+       
+       # Lint
+       bun lint
+       
+       # Type check
+       bun typecheck
+       ```
+    
+    3. **Test your changes**
+       ```bash
+       # Run tests
+       bun test
+       
+       # Run specific tests
+       cd packages/db
+       bun test
+       ```
+  </Tab>
+  
+  <Tab title="Database Changes">
+    If you're modifying the database schema:
+    
+    1. **Update schema**
+       ```typescript packages/db/src/schema.ts
+       export const myNewTable = pgTable('my_new_table', {
+         id: uuid('id').primaryKey(),
+         teamId: uuid('team_id').references(() => teams.id),
+         name: text('name'),
+       });
+       ```
+    
+    2. **Generate migration**
+       ```bash
+       cd packages/db
+       bun run drizzle-kit generate
+       ```
+    
+    3. **Test migration**
+       ```bash
+       bun run drizzle-kit push
+       ```
+    
+    4. **Update queries**
+       Create or update query functions in `packages/db/src/queries/`
+  </Tab>
+  
+  <Tab title="UI Changes">
+    For UI components:
+    
+    1. **Use existing components**
+       ```typescript
+       import { Button } from '@midday/ui/button';
+       import { Card } from '@midday/ui/card';
+       ```
+    
+    2. **Follow design system**
+       - Use Tailwind utility classes
+       - Follow Shadcn component patterns
+       - Ensure accessibility (ARIA labels, keyboard navigation)
+    
+    3. **Test responsiveness**
+       - Mobile (320px+)
+       - Tablet (768px+)
+       - Desktop (1024px+)
+  </Tab>
+  
+  <Tab title="Documentation">
+    Documentation lives in multiple places:
+    
+    1. **Code comments**
+       - Add JSDoc comments to functions
+       - Explain complex logic
+    
+    2. **README files**
+       - Update relevant README.md files
+       - Keep examples up to date
+    
+    3. **External docs**
+       - Update docs.midday.ai content
+  </Tab>
+</Tabs>
+
+### Committing Changes
+
+<Steps>
+  <Step title="Stage Changes">
+    ```bash
+    git add .
+    ```
+  </Step>
+  
+  <Step title="Commit with Clear Message">
+    Write clear, concise commit messages:
+    
+    ```bash
+    # Good commit messages
+    git commit -m "feat: add CSV export for transactions"
+    git commit -m "fix: resolve sorting issue in transaction list"
+    git commit -m "docs: update database setup guide"
+    git commit -m "refactor: simplify transaction matching logic"
+    ```
+    
+    Follow conventional commits format:
+    - `feat:` - New feature
+    - `fix:` - Bug fix
+    - `docs:` - Documentation
+    - `style:` - Code style changes
+    - `refactor:` - Code refactoring
+    - `test:` - Adding tests
+    - `chore:` - Maintenance tasks
+  </Step>
+  
+  <Step title="Push to Your Fork">
+    ```bash
+    git push origin feature/add-export-csv
+    ```
+  </Step>
+</Steps>
+
+### Creating a Pull Request
+
+<Steps>
+  <Step title="Open PR on GitHub">
+    1. Go to https://github.com/midday-ai/midday
+    2. Click "Pull Requests" → "New Pull Request"
+    3. Select your fork and branch
+  </Step>
+  
+  <Step title="Write Clear Description">
+    Include:
+    
+    ```markdown
+    ## Description
+    Brief description of changes
+    
+    ## Type of Change
+    - [ ] Bug fix
+    - [ ] New feature
+    - [ ] Breaking change
+    - [ ] Documentation update
+    
+    ## Testing
+    How to test these changes
+    
+    ## Screenshots (if applicable)
+    Before/after screenshots
+    
+    ## Checklist
+    - [ ] Code follows project style
+    - [ ] Tests pass
+    - [ ] Documentation updated
+    ```
+  </Step>
+  
+  <Step title="Wait for Review">
+    - CI checks will run automatically
+    - Maintainers will review your PR
+    - Address any feedback
+  </Step>
+</Steps>
+
+## Contribution Guidelines
+
+### Code Style
+
+<CardGroup cols={2}>
+  <Card title="Formatting" icon="paintbrush">
+    - Use **Biome** for formatting
+    - 2 spaces for indentation
+    - 80 character line width
+    - Run `bun format` before committing
+  </Card>
+  
+  <Card title="TypeScript" icon="code">
+    - Use strict TypeScript
+    - Define types for all functions
+    - Avoid `any` types
+    - Use Zod for runtime validation
+  </Card>
+  
+  <Card title="React" icon="react">
+    - Use functional components
+    - Prefer hooks over classes
+    - Keep components small and focused
+    - Use React 19 features when appropriate
+  </Card>
+  
+  <Card title="Naming" icon="tag">
+    - camelCase for variables/functions
+    - PascalCase for components/types
+    - UPPER_SNAKE_CASE for constants
+    - Descriptive, meaningful names
+  </Card>
+</CardGroup>
+
+### Testing
+
+<Tabs>
+  <Tab title="Unit Tests">
+    Write tests for business logic:
+    
+    ```typescript packages/db/src/test/example.test.ts
+    import { describe, it, expect } from 'bun:test';
+    import { myFunction } from '../my-function';
+    
+    describe('myFunction', () => {
+      it('should return expected result', () => {
+        const result = myFunction('input');
+        expect(result).toBe('expected');
+      });
+      
+      it('should handle edge cases', () => {
+        expect(() => myFunction(null)).toThrow();
+      });
+    });
+    ```
+  </Tab>
+  
+  <Tab title="Integration Tests">
+    Test interactions between components:
+    
+    ```typescript
+    describe('Transaction Matching', () => {
+      it('should match receipt to transaction', async () => {
+        const transaction = await createTransaction({
+          amount: 100,
+          date: '2024-01-15',
+        });
+        
+        const receipt = await uploadReceipt({
+          amount: 100,
+          date: '2024-01-15',
+        });
+        
+        const matches = await findMatches(receipt.id);
+        expect(matches).toContain(transaction.id);
+      });
+    });
+    ```
+  </Tab>
+  
+  <Tab title="E2E Tests">
+    For critical user flows (future addition):
+    
+    ```typescript
+    // Using Playwright or similar
+    test('user can create invoice', async ({ page }) => {
+      await page.goto('/invoices/new');
+      await page.fill('[name="customer"]', 'Acme Corp');
+      await page.fill('[name="amount"]', '1000');
+      await page.click('button[type="submit"]');
+      
+      await expect(page).toHaveURL(/\/invoices\/\d+/);
+    });
+    ```
+  </Tab>
+</Tabs>
+
+### Documentation
+
+Good documentation helps everyone:
+
+<Steps>
+  <Step title="Code Comments">
+    Add comments for complex logic:
+    
+    ```typescript
+    /**
+     * Matches receipts to transactions using AI embeddings
+     * @param receiptId - ID of the receipt to match
+     * @param threshold - Similarity threshold (0-1)
+     * @returns Array of potential transaction matches
+     */
+    export async function matchReceiptToTransactions(
+      receiptId: string,
+      threshold = 0.85
+    ): Promise<TransactionMatch[]> {
+      // Implementation...
+    }
+    ```
+  </Step>
+  
+  <Step title="README Updates">
+    Update README files when adding features:
+    
+    ```markdown
+    ## Features
+    
+    - Transaction tracking
+    - Receipt matching
+    - **NEW: CSV Export** - Export transactions to CSV
+    ```
+  </Step>
+  
+  <Step title="Inline Documentation">
+    Document important patterns:
+    
+    ```typescript
+    // IMPORTANT: Always include teamId in queries for RLS
+    const transactions = await db
+      .select()
+      .from(transactions)
+      .where(eq(transactions.teamId, teamId));
+    ```
+  </Step>
+</Steps>
+
+## Areas to Contribute
+
+<CardGroup cols={2}>
+  <Card title="Bug Fixes" icon="bug">
+    Find and fix bugs:
+    - Check GitHub Issues
+    - Test edge cases
+    - Improve error handling
+  </Card>
+  
+  <Card title="New Features" icon="sparkles">
+    Add new functionality:
+    - Enhance existing features
+    - Add integrations
+    - Improve UI/UX
+  </Card>
+  
+  <Card title="Performance" icon="gauge-high">
+    Optimize performance:
+    - Database query optimization
+    - Frontend bundle size
+    - API response times
+  </Card>
+  
+  <Card title="Documentation" icon="book">
+    Improve docs:
+    - Fix typos
+    - Add examples
+    - Write guides
+  </Card>
+  
+  <Card title="Tests" icon="flask">
+    Increase test coverage:
+    - Write unit tests
+    - Add integration tests
+    - Test edge cases
+  </Card>
+  
+  <Card title="Accessibility" icon="universal-access">
+    Make Midday accessible:
+    - Keyboard navigation
+    - Screen reader support
+    - ARIA labels
+  </Card>
+</CardGroup>
+
+## Security
+
+### Reporting Security Issues
+
+<Warning>
+  **DO NOT** open public GitHub issues for security vulnerabilities.
+</Warning>
+
+Instead, email: **security@midday.ai**
+
+### Security Guidelines
+
+When contributing:
+
+<Steps>
+  <Step title="Never Commit Secrets">
+    - No API keys, tokens, or passwords
+    - Use environment variables
+    - Add sensitive files to `.gitignore`
+  </Step>
+  
+  <Step title="Validate User Input">
+    ```typescript
+    import { z } from 'zod';
+    
+    const schema = z.object({
+      email: z.string().email(),
+      amount: z.number().positive(),
+    });
+    
+    const validated = schema.parse(input);
+    ```
+  </Step>
+  
+  <Step title="Use Parameterized Queries">
+    Drizzle ORM handles this automatically:
+    
+    ```typescript
+    // GOOD: Parameterized (safe)
+    await db
+      .select()
+      .from(users)
+      .where(eq(users.email, userEmail));
+    
+    // BAD: String concatenation (vulnerable to SQL injection)
+    await db.execute(sql`SELECT * FROM users WHERE email = '${userEmail}'`);
+    ```
+  </Step>
+  
+  <Step title="Implement RLS">
+    All new tables must have Row Level Security policies:
+    
+    ```sql
+    CREATE POLICY "Users can only see their team's data"
+      ON my_table
+      FOR ALL
+      USING (team_id IN (
+        SELECT team_id FROM users_on_team WHERE user_id = auth.uid()
+      ));
+    ```
+  </Step>
+</Steps>
+
+### Out of Scope
+
+Do not report:
+- Clickjacking on non-sensitive pages
+- Unauthenticated CSRF
+- Missing security headers (CSP, DNSSEC, CAA)
+- Email spoofing
+- DoS attacks
+- Social engineering
+
+## Communication
+
+<CardGroup cols={2}>
+  <Card title="GitHub Issues" icon="github" href="https://github.com/midday-ai/midday/issues">
+    Report bugs and request features
+  </Card>
+  
+  <Card title="GitHub Discussions" icon="comments" href="https://github.com/midday-ai/midday/discussions">
+    Ask questions and discuss ideas
+  </Card>
+  
+  <Card title="Documentation" icon="book" href="https://docs.midday.ai">
+    Read the full documentation
+  </Card>
+  
+  <Card title="Website" icon="globe" href="https://midday.ai">
+    Learn more about Midday
+  </Card>
+</CardGroup>
+
+## Code of Conduct
+
+### Our Standards
+
+- **Be respectful** - Treat everyone with respect
+- **Be inclusive** - Welcome diverse perspectives
+- **Be constructive** - Provide helpful feedback
+- **Be patient** - Maintainers are volunteers
+
+### Unacceptable Behavior
+
+- Harassment or discrimination
+- Trolling or insulting comments
+- Personal attacks
+- Publishing others' private information
+
+## License
+
+<Tabs>
+  <Tab title="AGPL-3.0">
+    For **non-commercial** use:
+    
+    - Free to use and modify
+    - Must open source modifications
+    - Must maintain license
+    - Cannot use for commercial purposes
+  </Tab>
+  
+  <Tab title="Commercial License">
+    For **commercial** deployments:
+    
+    Contact: **engineer@midday.ai**
+    
+    - Commercial use allowed
+    - Setup fee required
+    - Custom licensing terms
+  </Tab>
+</Tabs>
+
+By contributing, you agree that your contributions will be licensed under the same terms.
+
+## Recognition
+
+Contributors are recognized in:
+- GitHub contributors list
+- Release notes
+- Public acknowledgment (if desired)
+
+<Tip>
+  First-time contributors: Look for issues labeled `good first issue` to get started!
+</Tip>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Architecture" href="/development/architecture" icon="diagram-project">
+    Understand the system architecture
+  </Card>
+  <Card title="Database" href="/development/database" icon="database">
+    Learn about the database schema
+  </Card>
+  <Card title="Monorepo" href="/development/monorepo" icon="folder-tree">
+    Master the monorepo structure
+  </Card>
+  <Card title="GitHub" href="https://github.com/midday-ai/midday" icon="github">
+    Start contributing on GitHub
+  </Card>
+</CardGroup>
+
+---
+
+<Note>
+  Thank you for contributing to Midday! Your contributions help make business management better for everyone.
+</Note>

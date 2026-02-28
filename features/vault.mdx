@@ -1,0 +1,483 @@
+---
+title: Vault
+description: Securely store and organize all your business documents with intelligent search, automatic categorization, and seamless integration with transactions.
+---
+
+## Overview
+
+The Vault is your centralized document storage system in Midday. Store receipts, invoices, contracts, and any business documents with military-grade encryption. Documents are automatically organized, searchable, and linked to relevant transactions.
+
+## Uploading Documents
+
+### Drag and Drop
+
+The easiest way to add documents:
+
+<Steps>
+  <Step title="Navigate to Vault">
+    Go to the Vault page from the sidebar.
+  </Step>
+  
+  <Step title="Drag files">
+    Drag files from your computer directly onto the Vault page.
+  </Step>
+  
+  <Step title="Automatic processing">
+    Files are uploaded, encrypted, and automatically categorized.
+  </Step>
+</Steps>
+
+### Upload Button
+
+Alternatively, use the upload button:
+
+- Click the "+" or "Upload" button
+- Select single or multiple files
+- Files upload with progress indicator
+
+### Supported File Types
+
+```typescript
+const supportedTypes = [
+  // Documents
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  
+  // Spreadsheets
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "text/csv",
+  
+  // Images
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+  
+  // Other
+  "text/plain"
+]
+```
+
+<Note>
+  Files larger than 50MB will be uploaded in chunks for reliability. Maximum file size is 100MB.
+</Note>
+
+## Document Organization
+
+### View Modes
+
+Switch between two view modes:
+
+<Tabs>
+  <Tab title="Grid View">
+    ```typescript
+    // Visual grid with thumbnails
+    const gridView = {
+      layout: "grid",
+      columns: "auto", // Responsive
+      showThumbnails: true,
+      cardSize: "medium",
+      quickActions: true
+    }
+    ```
+    Perfect for visual browsing and image documents.
+  </Tab>
+  
+  <Tab title="Table View">
+    ```typescript
+    // Detailed list with metadata
+    const tableView = {
+      layout: "table",
+      columns: [
+        "name",
+        "type",
+        "size",
+        "uploadedAt",
+        "category",
+        "tags"
+      ],
+      sortable: true,
+      filterable: true
+    }
+    ```
+    Ideal for sorting, filtering, and bulk operations.
+  </Tab>
+</Tabs>
+
+Toggle between views with the view switcher in the header.
+
+### Automatic Categorization
+
+Midday automatically categorizes documents using AI:
+
+```typescript
+type DocumentCategory = 
+  | "invoice"       // Incoming invoices
+  | "receipt"       // Purchase receipts
+  | "contract"      // Legal contracts
+  | "statement"     // Bank/financial statements
+  | "tax"          // Tax documents
+  | "other"        // Uncategorized
+```
+
+Documents are analyzed upon upload:
+- Content extraction (OCR for images/PDFs)
+- Pattern recognition
+- Entity detection
+- Automatic tagging
+
+## Search and Filter
+
+### Intelligent Search
+
+Find documents instantly with powerful search:
+
+<Card title="Search Capabilities" icon="magnifying-glass">
+  - **Full-text search** - Search within document content
+  - **Filename search** - Find by document name
+  - **Metadata search** - Search by date, size, type
+  - **OCR search** - Search text extracted from images and PDFs
+</Card>
+
+```typescript
+// Example search queries
+const searchExamples = [
+  "acme corp invoice",      // Vendor name
+  "january 2026",           // Date range
+  "receipt > 1000",         // Amount filter
+  "pdf contract",           // Type + category
+]
+```
+
+### Filters
+
+Narrow down documents with filters:
+
+**Date Filters:**
+- Last 7 days
+- Last 30 days
+- Last 90 days
+- Custom date range
+
+**Type Filters:**
+- Documents (PDF, Word, etc.)
+- Spreadsheets (Excel, CSV)
+- Images (JPEG, PNG)
+- All types
+
+**Category Filters:**
+- Invoices
+- Receipts
+- Contracts
+- Statements
+- Tax documents
+- Uncategorized
+
+**Tag Filters:**
+- Filter by custom tags
+- Combine multiple tags
+- Exclude tags
+
+## Document Details
+
+### Metadata
+
+Every document includes:
+
+```typescript
+const documentMetadata = {
+  id: "doc_123",
+  name: "Invoice_ACMECorp_2026-02.pdf",
+  type: "application/pdf",
+  size: 245600,              // bytes
+  uploadedAt: "2026-02-28T10:00:00Z",
+  uploadedBy: "user_456",
+  category: "invoice",
+  tags: ["acme", "february"],
+  
+  // Extracted data
+  extractedText: "...",      // Full text content
+  entities: {
+    amount: 1500.00,
+    currency: "USD",
+    date: "2026-02-28",
+    vendor: "ACME Corp"
+  },
+  
+  // Relationships
+  transactionId: "txn_789",  // Linked transaction
+  inboxItemId: "inbox_321"   // Source inbox item
+}
+```
+
+### Preview
+
+Preview documents without downloading:
+
+- **PDF Preview:** Full in-browser PDF viewer
+- **Image Preview:** High-quality image display
+- **Text Preview:** Extracted text view
+- **Thumbnail Generation:** Automatic for all types
+
+<Note>
+  Previews are generated on-demand and cached for fast access. PDFs display with zoom, page navigation, and search.
+</Note>
+
+## Document Actions
+
+### Individual Actions
+
+Actions available for each document:
+
+<Steps>
+  <Step title="View/Preview">
+    Open document in viewer without downloading.
+  </Step>
+  
+  <Step title="Download">
+    Download original file to your device.
+  </Step>
+  
+  <Step title="Link to transaction">
+    Manually link document to a transaction.
+  </Step>
+  
+  <Step title="Edit details">
+    Update name, category, tags, or notes.
+  </Step>
+  
+  <Step title="Delete">
+    Permanently delete document (with confirmation).
+  </Step>
+</Steps>
+
+### Bulk Actions
+
+Perform actions on multiple documents:
+
+- Select multiple documents (Shift+Click for range)
+- Bulk download as ZIP
+- Bulk delete
+- Bulk tag assignment
+- Bulk category change
+
+## Tagging System
+
+### Custom Tags
+
+Organize documents with tags:
+
+```typescript
+const tagging = {
+  create: "Type to create new tag",
+  assign: "Click to add to document",
+  colors: "Auto-assigned colors",
+  search: "Filter by multiple tags"
+}
+```
+
+**Tag Best Practices:**
+- Use consistent naming (e.g., "Q1-2026" not "q1 2026")
+- Create tags for projects, clients, or tax years
+- Tag documents as you upload them
+- Use tags instead of folder hierarchies
+
+### Smart Tags
+
+Midday suggests tags based on:
+- Document content
+- Previously used tags
+- Linked transactions
+- Other documents in context
+
+## Storage & Security
+
+### Encryption
+
+All documents are encrypted:
+
+```typescript
+const security = {
+  encryption: "AES-256-GCM",
+  atRest: true,              // Encrypted in storage
+  inTransit: true,           // TLS 1.3
+  keyManagement: "HSM",      // Hardware security module
+  zeroKnowledge: false       // We can't read your docs
+}
+```
+
+<Warning>
+  Once uploaded, documents are immediately encrypted. Even Midday cannot access your documents without your team's encryption keys.
+</Warning>
+
+### Storage Limits
+
+Storage limits by plan:
+
+- **Free:** 1 GB
+- **Pro:** 10 GB
+- **Team:** 50 GB per team member
+- **Enterprise:** Custom
+
+**Current Usage:**
+See your storage usage in the Vault header.
+
+### Backup & Redundancy
+
+Documents are automatically:
+- Replicated across multiple data centers
+- Backed up daily
+- Recoverable for 30 days after deletion
+- Versioned (future feature)
+
+## Integration with Transactions
+
+### Automatic Linking
+
+Documents can be automatically linked to transactions:
+
+<Tabs>
+  <Tab title="From Inbox">
+    ```typescript
+    // Magic Inbox auto-links
+    const inboxMatch = {
+      inboxItem: "inbox_123",
+      attachment: "receipt.pdf",
+      transaction: "txn_456",
+      confidence: 0.92,
+      status: "auto-linked"
+    }
+    ```
+    When confirming an inbox match, the attachment moves to Vault and links to the transaction.
+  </Tab>
+  
+  <Tab title="Manual Upload">
+    ```typescript
+    // Upload directly to transaction
+    const manualUpload = {
+      source: "transaction-detail",
+      transactionId: "txn_456",
+      file: "receipt.pdf",
+      linkStatus: "manual"
+    }
+    ```
+    Upload from the transaction details page to auto-link.
+  </Tab>
+</Tabs>
+
+### Transaction Attachments
+
+View linked documents from transactions:
+- Transaction detail page shows attached documents
+- Click to preview without leaving transaction view
+- Unlink or attach different documents
+
+See [Transaction Management](/features/transactions) for more details.
+
+## Collaboration
+
+### Team Access
+
+All team members can:
+- View all team documents
+- Upload new documents
+- Tag and categorize
+- Link to transactions
+
+### Permissions
+
+```typescript
+const permissions = {
+  owner: ["upload", "view", "edit", "delete"],
+  admin: ["upload", "view", "edit", "delete"],
+  member: ["upload", "view", "edit"],
+  guest: ["view"] // Read-only
+}
+```
+
+### Activity Log
+
+Track document activity:
+- Who uploaded
+- When uploaded
+- Who viewed
+- Who made changes
+- Download history
+
+## Export Options
+
+### Bulk Download
+
+Download multiple documents:
+
+<Steps>
+  <Step title="Select documents">
+    Use checkboxes to select documents in table or grid view.
+  </Step>
+  
+  <Step title="Click download">
+    Selected documents are packaged into a ZIP file.
+  </Step>
+  
+  <Step title="Download ZIP">
+    ZIP file downloads with original filenames and folder structure.
+  </Step>
+</Steps>
+
+### Export to Accounting
+
+Link documents to exported transactions:
+- Documents follow transactions to QuickBooks, Xero, etc.
+- Attachments included in export packages
+- Maintains links after export
+
+## Best Practices
+
+<Note>
+  **Pro Tip:** Upload documents as soon as you receive them. This ensures they're safe, searchable, and ready to link to transactions.
+</Note>
+
+1. **Use descriptive filenames** - Include vendor, date, and type
+2. **Tag immediately** - Tag documents upon upload
+3. **Link to transactions** - Connect receipts to their transactions
+4. **Regular cleanup** - Archive or delete old documents
+5. **Leverage search** - Use full-text search instead of manual browsing
+6. **Consistent categories** - Let AI categorize or manually correct
+
+## Keyboard Shortcuts
+
+- `U` - Upload document
+- `V` - Switch view mode (grid/table)
+- `/` - Focus search
+- `Esc` - Close preview
+- `Space` - Preview selected document
+- `Shift + Click` - Select range
+- `Cmd/Ctrl + A` - Select all
+
+## Troubleshooting
+
+**Upload failing?**
+- Check file size (max 100MB)
+- Verify file type is supported
+- Check internet connection
+- Try uploading fewer files at once
+
+**Can't find a document?**
+- Clear all filters
+- Try different search terms
+- Check if it was deleted (recoverable for 30 days)
+- Verify you're in the right team
+
+**Preview not loading?**
+- Wait for processing to complete
+- Refresh the page
+- Try downloading instead
+- Check if file is corrupted
+
+**Storage limit reached?**
+- Delete old documents
+- Archive to external storage
+- Upgrade to higher plan
+- Contact support for enterprise options

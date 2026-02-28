@@ -1,0 +1,624 @@
+---
+title: Monorepo
+description: Understand Midday's monorepo structure, workspaces, and shared packages
+---
+
+## Overview
+
+Midday is organized as a **monorepo** using **Bun workspaces** and **Turborepo** for efficient development and building. This structure enables code sharing across multiple applications while maintaining clear boundaries.
+
+## Package Manager: Bun
+
+Midday uses **Bun 1.3.10** as its package manager and runtime:
+
+```json package.json
+{
+  "packageManager": "bun@1.3.10",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ]
+}
+```
+
+### Why Bun?
+
+- **Fast**: 20-30x faster than npm/yarn for installations
+- **Built-in TypeScript**: Native TypeScript support without transpilation
+- **Hot reload**: Instant development feedback
+- **All-in-one**: Runtime, test runner, bundler, and package manager
+
+### Installing Dependencies
+
+<CodeGroup>
+```bash Install All
+# Install all dependencies in workspace
+bun install
+```
+
+```bash Add Dependency
+# Add to specific workspace
+bun add <package> --filter=@midday/dashboard
+
+# Add to root
+bun add -D <package>
+```
+
+```bash Remove Dependency
+bun remove <package> --filter=@midday/api
+```
+
+```bash Update Dependencies
+bun update
+```
+</CodeGroup>
+
+## Workspace Structure
+
+```bash
+midday/
+├── apps/
+│   ├── dashboard/          # Main Next.js app
+│   ├── api/                # Hono API server
+│   ├── website/            # Marketing site
+│   ├── desktop/            # Tauri desktop app
+│   └── worker/             # Background jobs
+├── packages/
+│   ├── db/                 # Database layer
+│   ├── ui/                 # Shared components
+│   ├── supabase/           # Supabase client
+│   ├── banking/            # Banking logic
+│   ├── invoice/            # Invoice logic
+│   ├── utils/              # Utilities
+│   └── .../                # 23+ more packages
+├── turbo.json              # Turborepo config
+├── package.json            # Root package.json
+├── bun.lock                # Lock file
+└── tsconfig.json           # Base TypeScript config
+```
+
+## Turborepo Configuration
+
+Turborepo orchestrates builds, tests, and development across the monorepo:
+
+```json turbo.json
+{
+  "$schema": "https://turborepo.org/schema.json",
+  "globalDependencies": ["**/.env"],
+  "ui": "stream",
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": [
+        ".next/**",
+        "!.next/cache/**",
+        "dist/**",
+        "lib/**"
+      ]
+    },
+    "dev": {
+      "persistent": true,
+      "cache": false
+    },
+    "lint": {
+      "dependsOn": ["^topo"]
+    },
+    "typecheck": {
+      "outputs": []
+    },
+    "test": {
+      "cache": false
+    }
+  }
+}
+```
+
+### Key Features
+
+<CardGroup cols={2}>
+  <Card title="Task Caching" icon="clock">
+    Turbo caches build outputs. If nothing changed, it skips the build.
+  </Card>
+  <Card title="Parallel Execution" icon="bolt">
+    Runs tasks across workspaces in parallel for maximum speed.
+  </Card>
+  <Card title="Dependency Graph" icon="diagram-project">
+    Understands dependencies between packages and builds in the correct order.
+  </Card>
+  <Card title="Incremental Builds" icon="layer-group">
+    Only rebuilds what changed since the last build.
+  </Card>
+</CardGroup>
+
+## Package Scripts
+
+Root-level scripts in `package.json`:
+
+```json package.json
+{
+  "scripts": {
+    // Development
+    "dev": "turbo dev --parallel",
+    "dev:dashboard": "turbo dev --filter=@midday/dashboard",
+    "dev:api": "turbo dev --filter=@midday/api",
+    "dev:website": "turbo dev --filter=@midday/website",
+    "dev:desktop": "turbo dev --filter=@midday/desktop",
+    
+    // Building
+    "build": "turbo build",
+    "build:dashboard": "turbo build --filter=@midday/dashboard",
+    
+    // Starting
+    "start:dashboard": "turbo start --filter=@midday/dashboard",
+    "start:website": "turbo start --filter=@midday/website",
+    
+    // Code Quality
+    "format": "biome format --write .",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "test": "turbo test --parallel",
+    
+    // Maintenance
+    "clean": "git clean -xdf node_modules",
+    "clean:workspaces": "turbo clean"
+  }
+}
+```
+
+### Running Scripts
+
+<Steps>
+  <Step title="Development">
+    Start all apps in parallel:
+    ```bash
+    bun dev
+    ```
+  </Step>
+  
+  <Step title="Specific App">
+    Run a specific app using filters:
+    ```bash
+    bun dev:dashboard
+    # or
+    turbo dev --filter=@midday/dashboard
+    ```
+  </Step>
+  
+  <Step title="Multiple Apps">
+    Run multiple specific apps:
+    ```bash
+    turbo dev --filter=@midday/dashboard --filter=@midday/api
+    ```
+  </Step>
+  
+  <Step title="With Dependencies">
+    Include package dependencies:
+    ```bash
+    turbo build --filter=@midday/dashboard...
+    ```
+  </Step>
+</Steps>
+
+## Shared Packages
+
+Packages are internal libraries shared across apps:
+
+### Package Structure
+
+```bash packages/db/
+packages/db/
+├── src/
+│   ├── index.ts           # Main exports
+│   ├── client.ts
+│   ├── schema.ts
+│   └── queries/
+├── package.json           # Package config
+└── tsconfig.json          # TypeScript config
+```
+
+### Package Exports
+
+Define clear entry points in `package.json`:
+
+```json packages/db/package.json
+{
+  "name": "@midday/db",
+  "private": true,
+  "exports": {
+    "./client": "./src/client.ts",
+    "./queries": "./src/queries/index.ts",
+    "./schema": "./src/schema.ts",
+    "./utils/currency": "./src/utils/currency.ts"
+  }
+}
+```
+
+### Using Shared Packages
+
+```typescript apps/dashboard/src/app/page.tsx
+// Import from shared packages
+import { db } from '@midday/db/client';
+import { getTransactions } from '@midday/db/queries';
+import { Button } from '@midday/ui/button';
+import { formatCurrency } from '@midday/utils/currency';
+```
+
+<Note>
+  All internal packages are marked as `"private": true` to prevent accidental publishing to npm.
+</Note>
+
+## Workspace Dependencies
+
+### Internal Dependencies
+
+Reference other workspace packages using `workspace:*`:
+
+```json packages/invoice/package.json
+{
+  "name": "@midday/invoice",
+  "dependencies": {
+    "@midday/db": "workspace:*",
+    "@midday/utils": "workspace:*",
+    "@midday/encryption": "workspace:*"
+  }
+}
+```
+
+### External Dependencies
+
+Use the **catalog** feature for consistent versions:
+
+```json package.json (root)
+{
+  "catalog": {
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "typescript": "^5.9.3",
+    "zod": "^4.3.5",
+    "date-fns": "^4.1.0"
+  }
+}
+```
+
+Then use in packages:
+
+```json packages/dashboard/package.json
+{
+  "dependencies": {
+    "react": "catalog:",
+    "zod": "catalog:"
+  }
+}
+```
+
+<Tip>
+  The catalog ensures all packages use the same version of shared dependencies.
+</Tip>
+
+## TypeScript Configuration
+
+Midday uses a shared TypeScript configuration:
+
+### Base Config
+
+```json tsconfig.json (root)
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true
+  }
+}
+```
+
+### Package Configs
+
+Packages extend the base config:
+
+```json packages/db/tsconfig.json
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src"
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}
+```
+
+### Shared TypeScript Config Package
+
+```json packages/tsconfig/package.json
+{
+  "name": "@midday/tsconfig",
+  "exports": {
+    "./base.json": "./base.json",
+    "./nextjs.json": "./nextjs.json",
+    "./react.json": "./react.json"
+  }
+}
+```
+
+Usage:
+
+```json apps/dashboard/tsconfig.json
+{
+  "extends": "@midday/tsconfig/nextjs.json"
+}
+```
+
+## Code Quality Tools
+
+### Biome (Linting & Formatting)
+
+Midday uses **Biome** for fast linting and formatting:
+
+```json biome.json
+{
+  "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "lineWidth": 80
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true
+    }
+  }
+}
+```
+
+<CodeGroup>
+```bash Format Code
+bun format
+```
+
+```bash Lint
+bun lint
+
+# Fix issues
+turbo lint:fix
+```
+
+```bash Type Check
+bun typecheck
+```
+</CodeGroup>
+
+### Testing
+
+Bun has a built-in test runner:
+
+```typescript packages/db/src/test/transactions.test.ts
+import { describe, it, expect } from 'bun:test';
+import { getTransactions } from '../queries/transactions';
+
+describe('Transaction Queries', () => {
+  it('should filter by date range', async () => {
+    const results = await getTransactions({
+      teamId: 'test-team',
+      start: '2024-01-01',
+      end: '2024-12-31',
+    });
+    
+    expect(results).toBeArray();
+  });
+});
+```
+
+Run tests:
+
+```bash
+# All tests
+bun test
+
+# Specific package
+bun test --filter=@midday/db
+
+# Watch mode
+bun test --watch
+```
+
+## Development Workflow
+
+<Steps>
+  <Step title="Clone Repository">
+    ```bash
+    git clone https://github.com/midday-ai/midday.git
+    cd midday
+    ```
+  </Step>
+  
+  <Step title="Install Dependencies">
+    ```bash
+    bun install
+    ```
+  </Step>
+  
+  <Step title="Set Up Environment">
+    Copy environment variables:
+    ```bash
+    cp .env.example .env.local
+    ```
+  </Step>
+  
+  <Step title="Start Development">
+    ```bash
+    # Start all apps
+    bun dev
+    
+    # Or start specific app
+    bun dev:dashboard
+    ```
+  </Step>
+  
+  <Step title="Make Changes">
+    Edit code in any package or app. Hot reload is enabled.
+  </Step>
+  
+  <Step title="Build">
+    ```bash
+    # Build all
+    bun build
+    
+    # Build specific app
+    bun build:dashboard
+    ```
+  </Step>
+</Steps>
+
+## Adding New Packages
+
+<Steps>
+  <Step title="Create Package Directory">
+    ```bash
+    mkdir -p packages/my-package/src
+    cd packages/my-package
+    ```
+  </Step>
+  
+  <Step title="Create package.json">
+    ```json packages/my-package/package.json
+    {
+      "name": "@midday/my-package",
+      "private": true,
+      "exports": {
+        ".": "./src/index.ts"
+      },
+      "scripts": {
+        "lint": "biome check .",
+        "typecheck": "tsc --noEmit"
+      },
+      "dependencies": {
+        "@midday/utils": "workspace:*"
+      }
+    }
+    ```
+  </Step>
+  
+  <Step title="Create Source Files">
+    ```typescript packages/my-package/src/index.ts
+    export function myFunction() {
+      return 'Hello from my-package';
+    }
+    ```
+  </Step>
+  
+  <Step title="Add TypeScript Config">
+    ```json packages/my-package/tsconfig.json
+    {
+      "extends": "../../tsconfig.json",
+      "compilerOptions": {
+        "outDir": "dist",
+        "rootDir": "src"
+      },
+      "include": ["src/**/*"]
+    }
+    ```
+  </Step>
+  
+  <Step title="Use in Apps">
+    Install the workspace package:
+    ```bash
+    # Add to another package/app
+    bun add @midday/my-package --filter=@midday/dashboard
+    ```
+    
+    Then import:
+    ```typescript
+    import { myFunction } from '@midday/my-package';
+    ```
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+### Common Issues
+
+<AccordionGroup>
+  <Accordion title="Module not found errors">
+    Ensure the package is:
+    1. Added to `dependencies` with `workspace:*`
+    2. Has proper `exports` in `package.json`
+    3. Installed: `bun install`
+  </Accordion>
+  
+  <Accordion title="Type errors across packages">
+    Run type check:
+    ```bash
+    bun typecheck
+    ```
+    
+    Ensure TypeScript configs extend the base config.
+  </Accordion>
+  
+  <Accordion title="Cache issues">
+    Clear Turbo cache:
+    ```bash
+    bun clean:workspaces
+    rm -rf node_modules .turbo
+    bun install
+    ```
+  </Accordion>
+  
+  <Accordion title="Hot reload not working">
+    Restart dev server:
+    ```bash
+    # Kill all processes
+    pkill -f "bun|turbo"
+    
+    # Restart
+    bun dev:dashboard
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Performance Tips
+
+<CardGroup cols={2}>
+  <Card title="Use Filters" icon="filter">
+    Only run tasks for packages you're working on:
+    ```bash
+    turbo dev --filter=@midday/dashboard
+    ```
+  </Card>
+  
+  <Card title="Leverage Cache" icon="database">
+    Turbo caches outputs. Clean builds are instant if nothing changed.
+  </Card>
+  
+  <Card title="Parallel Tasks" icon="arrows-split-up-and-left">
+    Run independent tasks in parallel:
+    ```bash
+    turbo lint test typecheck --parallel
+    ```
+  </Card>
+  
+  <Card title="Scope Changes" icon="bullseye">
+    Only build what changed:
+    ```bash
+    turbo build --filter=[main]
+    ```
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Architecture" href="/development/architecture" icon="sitemap">
+    Understand the overall system architecture
+  </Card>
+  <Card title="Database" href="/development/database" icon="database">
+    Learn about the database layer
+  </Card>
+  <Card title="Contributing" href="/development/contributing" icon="hands-helping">
+    Start contributing to Midday
+  </Card>
+</CardGroup>

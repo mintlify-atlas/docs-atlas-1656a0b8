@@ -1,0 +1,392 @@
+---
+title: Invoicing
+description: Create professional invoices with customizable templates, recurring billing, payment tracking, and automated reminders for faster payments.
+---
+
+## Overview
+
+Midday's invoicing system enables you to create, send, and track professional invoices with built-in payment processing, templates, and automation. From one-time invoices to recurring billing, manage your entire invoicing workflow in one place.
+
+## Creating Invoices
+
+### Quick Invoice Creation
+
+<Steps>
+  <Step title="Start a new invoice">
+    Click the "+" button on the Invoices page or use the keyboard shortcut.
+  </Step>
+  
+  <Step title="Add customer details">
+    Select an existing customer or create a new one with email, name, and billing information.
+  </Step>
+  
+  <Step title="Add line items">
+    Add products or services with quantities, prices, and optional tax rates per item.
+  </Step>
+  
+  <Step title="Customize and send">
+    Choose your template, add notes, set payment terms, and send directly to your customer.
+  </Step>
+</Steps>
+
+## Invoice Components
+
+### Line Items
+
+Build detailed invoices with flexible line items:
+
+```typescript
+const lineItem = {
+  name: "Web Development",
+  quantity: 40,
+  price: 150.00,
+  unit: "hours",
+  productId: "prod_123", // Optional: link to product catalog
+  taxRate: 10 // Per-item tax rate (0-100)
+}
+```
+
+**Line Item Features:**
+- Smart autocomplete from product catalog
+- Per-item tax rates
+- Flexible units (hours, items, days, etc.)
+- Automatic subtotal calculation
+
+### Product Catalog
+
+Streamline invoicing with a product catalog:
+
+<Tabs>
+  <Tab title="Create Products">
+    ```typescript
+    const product = {
+      name: "Consulting Services",
+      description: "Hourly consulting rate",
+      price: 200.00,
+      currency: "USD",
+      unit: "hour",
+      taxRate: 10 // Default tax rate
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Use Products">
+    ```typescript
+    // Products auto-populate in invoice line items
+    // Track usage count and last used date
+    const productUsage = {
+      usageCount: 42,
+      lastUsedAt: "2026-02-28T10:30:00Z",
+      isActive: true
+    }
+    ```
+  </Tab>
+</Tabs>
+
+Navigate to **Invoices → Products** to manage your catalog.
+
+## Invoice Templates
+
+### Customization Options
+
+Create professional-looking invoices that match your brand:
+
+**Template Settings:**
+- Logo upload
+- Custom colors and fonts
+- Paper size (A4 or Letter)
+- Date format preferences
+- Currency selection
+- Language/locale
+
+**Configurable Labels:**
+```typescript
+const template = {
+  customerLabel: "Bill To",
+  title: "INVOICE",
+  fromLabel: "From",
+  invoiceNoLabel: "Invoice #",
+  issueDateLabel: "Issue Date",
+  dueDateLabel: "Due Date",
+  descriptionLabel: "Description",
+  priceLabel: "Rate",
+  quantityLabel: "Qty",
+  totalLabel: "Amount",
+  vatLabel: "VAT",
+  taxLabel: "Tax",
+  discountLabel: "Discount"
+}
+```
+
+### Template Features
+
+<Note>
+  All templates automatically calculate totals, taxes, and discounts. You can toggle which elements to display.
+</Note>
+
+**Toggle Options:**
+- ✅ Include VAT calculation
+- ✅ Include tax calculation
+- ✅ Include discount field
+- ✅ Show decimal places
+- ✅ Show units column
+- ✅ Include QR code for payments
+- ✅ Per-line-item tax rates
+
+## Invoice States
+
+Invoices progress through multiple states:
+
+### Status Flow
+
+```typescript
+type InvoiceStatus = 
+  | "draft"      // Not yet sent
+  | "scheduled"  // Scheduled for future send
+  | "unpaid"     // Sent but not paid
+  | "overdue"    // Past due date
+  | "paid"       // Payment received
+  | "canceled"   // Canceled by user
+  | "refunded"   // Payment refunded
+```
+
+### Dashboard Overview
+
+The invoices page shows key metrics:
+
+<Card title="Invoice Summary" icon="chart-line">
+  - **Open Invoices:** Draft, scheduled, and unpaid totals
+  - **Overdue Amount:** Total value of overdue invoices
+  - **Paid This Period:** Successfully collected payments
+  - **Payment Score:** Your average time to payment
+</Card>
+
+## Recurring Invoices
+
+Automate repetitive billing with recurring invoices:
+
+### Schedule Options
+
+<Steps>
+  <Step title="Set schedule">
+    Choose frequency: weekly, monthly, quarterly, or yearly.
+  </Step>
+  
+  <Step title="Define duration">
+    Set end date or make it ongoing until manually stopped.
+  </Step>
+  
+  <Step title="Activate">
+    Enable the recurring schedule and invoices will be automatically created and sent.
+  </Step>
+</Steps>
+
+```typescript
+const recurringInvoice = {
+  frequency: "monthly",
+  startDate: "2026-03-01",
+  endDate: "2026-12-31", // or null for ongoing
+  autoSend: true,
+  reminderEnabled: true
+}
+```
+
+## Payment Processing
+
+### Payment Links
+
+Every invoice includes a secure payment link:
+
+- Embedded payment form
+- Multiple payment methods
+- Automatic payment confirmation
+- Receipt generation
+
+<Warning>
+  Payment processing must be enabled in your settings. Set up your payment provider integration first.
+</Warning>
+
+### Payment Tracking
+
+```typescript
+const paymentDetails = {
+  paidAt: "2026-02-28T14:30:00Z",
+  viewedAt: "2026-02-27T09:15:00Z",
+  reminderSentAt: "2026-02-26T10:00:00Z",
+  sentTo: "client@example.com",
+  sentAt: "2026-02-25T08:00:00Z"
+}
+```
+
+## Email Customization
+
+Customize the email sent with invoices:
+
+**Email Template:**
+```typescript
+const emailSettings = {
+  emailSubject: "Invoice #{{invoice_number}} from {{company_name}}",
+  emailHeading: "You have a new invoice",
+  emailBody: "Please find your invoice attached. Payment is due by {{due_date}}.",
+  emailButtonText: "View Invoice"
+}
+```
+
+## Advanced Features
+
+### Internal Notes
+
+<Tabs>
+  <Tab title="Customer-Facing Notes">
+    ```typescript
+    const customerNote = {
+      note: "Thank you for your business!",
+      bottomBlock: {
+        type: "doc",
+        content: [/* Rich text content */]
+      }
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Internal Notes">
+    ```typescript
+    const internalNote = {
+      internalNote: "Customer requested extended payment terms",
+      visibility: "team-only"
+    }
+    ```
+  </Tab>
+</Tabs>
+
+### Tax & Discount Handling
+
+**Tax Options:**
+- Global tax rate (applied to all items)
+- Per-line-item tax rates
+- VAT calculation
+- Tax-inclusive or exclusive pricing
+
+**Discount Options:**
+- Percentage discount
+- Fixed amount discount
+- Applied before or after tax
+
+```typescript
+const pricing = {
+  subtotal: 1000.00,
+  discount: 100.00,     // 10% discount
+  tax: 90.00,           // 10% tax on discounted amount
+  vat: 0,               // Optional VAT
+  total: 990.00
+}
+```
+
+## Customer Management
+
+Invoices are linked to customers:
+
+- **Customer Profiles:** Store billing details, email, website
+- **Invoice History:** View all invoices per customer
+- **Quick Select:** Autocomplete when creating new invoices
+- **Customer Insights:** Track most active and top revenue customers
+
+See [Customer Management](/features/customers) for more details.
+
+## Integration with Time Tracking
+
+Convert tracked time into invoices:
+
+<Steps>
+  <Step title="Track time on projects">
+    Use the time tracker to log hours for your client projects.
+  </Step>
+  
+  <Step title="Select time entries">
+    From the tracker calendar, select the date range or entries to invoice.
+  </Step>
+  
+  <Step title="Generate invoice">
+    Click "Create Invoice" and time entries are converted to line items automatically.
+  </Step>
+</Steps>
+
+```typescript
+// Time entries become line items
+const timeToInvoice = {
+  project: "Client Website",
+  entries: [
+    { date: "2026-02-24", hours: 8, rate: 150 },
+    { date: "2026-02-25", hours: 6.5, rate: 150 }
+  ],
+  // Generates line item:
+  lineItem: {
+    name: "Client Website - 14.5 hours",
+    quantity: 14.5,
+    price: 150,
+    unit: "hours"
+  }
+}
+```
+
+## Automated Reminders
+
+Never chase payments manually:
+
+- **Automatic Reminders:** Send reminders for overdue invoices
+- **Customizable Timing:** Set when reminders are sent
+- **Delivery Tracking:** See when reminders are opened
+
+## Reporting & Analytics
+
+### Invoice Metrics
+
+Track your invoicing performance:
+
+- **Payment Score:** Average days to payment
+- **Outstanding Amount:** Total unpaid invoices
+- **Monthly Revenue:** Paid invoices per period
+- **Customer Analytics:** Top customers by revenue
+
+### Export Options
+
+- **PDF Export:** Download invoice as PDF
+- **Data Export:** Export invoice data to CSV
+- **Accounting Integration:** Sync with QuickBooks, Xero, Fortnox
+
+## Best Practices
+
+<Note>
+  **Pro Tip:** Use the product catalog for consistency and faster invoice creation. Products remember your pricing and automatically populate tax rates.
+</Note>
+
+1. **Set clear payment terms** - Include due dates on every invoice
+2. **Use professional templates** - Add your logo and brand colors
+3. **Enable payment links** - Make it easy for customers to pay
+4. **Send reminders** - Automate follow-ups for overdue invoices
+5. **Track viewed status** - See when customers open invoices
+6. **Use recurring billing** - Automate monthly retainer invoicing
+
+## Keyboard Shortcuts
+
+- `N` - New invoice
+- `F` - Filter invoices
+- `Esc` - Close invoice sheet
+- `/` - Search invoices
+
+## Troubleshooting
+
+**Invoice not sending?**
+- Check customer email address
+- Verify email settings configured
+- Check spam folder for test emails
+
+**Payment not processing?**
+- Ensure payment provider is connected
+- Verify payment link is enabled in template
+- Check payment provider status
+
+**Wrong currency showing?**
+- Update template currency setting
+- Check customer currency preference
+- Verify team default currency

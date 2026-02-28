@@ -1,0 +1,372 @@
+---
+title: 'Customers'
+description: 'Customer management API for maintaining client information and invoicing relationships'
+---
+
+The Customers API provides endpoints for managing customer records, including CRUD operations, enrichment, portal access, and invoice summaries.
+
+## Query Endpoints
+
+### get
+
+Retrieve a paginated list of customers.
+
+<ParamField query="q" type="string" optional>
+  Search query for customer name, email, or website
+</ParamField>
+
+<ParamField query="sort" type="array" optional>
+  Array of sort objects
+</ParamField>
+
+<ParamField query="limit" type="number" optional>
+  Number of results per page
+</ParamField>
+
+```typescript
+import { trpc } from '@/lib/trpc';
+
+const { data, meta } = await trpc.customers.get.query({
+  q: 'acme',
+  limit: 20,
+});
+```
+
+### getById
+
+Retrieve a specific customer by ID.
+
+<ParamField query="id" type="string" required>
+  Customer UUID
+</ParamField>
+
+<ResponseField name="customer" type="object">
+  <Expandable title="Customer properties">
+    <ResponseField name="id" type="string">
+      Customer UUID
+    </ResponseField>
+    <ResponseField name="name" type="string">
+      Customer name
+    </ResponseField>
+    <ResponseField name="email" type="string" optional>
+      Email address
+    </ResponseField>
+    <ResponseField name="phone" type="string" optional>
+      Phone number
+    </ResponseField>
+    <ResponseField name="website" type="string" optional>
+      Website URL
+    </ResponseField>
+    <ResponseField name="address" type="object" optional>
+      Address object
+    </ResponseField>
+    <ResponseField name="vatNumber" type="string" optional>
+      VAT/tax ID number
+    </ResponseField>
+    <ResponseField name="portalEnabled" type="boolean">
+      Whether customer portal access is enabled
+    </ResponseField>
+    <ResponseField name="portalId" type="string" optional>
+      Unique portal ID for customer access
+    </ResponseField>
+    <ResponseField name="enrichmentStatus" type="string" optional>
+      Status of AI enrichment: "pending" | "completed" | "failed"
+    </ResponseField>
+    <ResponseField name="enrichmentData" type="object" optional>
+      Enriched data from AI
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+```typescript
+const customer = await trpc.customers.getById.query({
+  id: 'customer-uuid',
+});
+```
+
+### getInvoiceSummary
+
+Get invoice summary statistics for a customer.
+
+<ParamField query="id" type="string" required>
+  Customer UUID
+</ParamField>
+
+<ResponseField name="summary" type="object">
+  <Expandable title="properties">
+    <ResponseField name="totalInvoices" type="number">
+      Total number of invoices
+    </ResponseField>
+    <ResponseField name="totalAmount" type="number">
+      Total invoiced amount
+    </ResponseField>
+    <ResponseField name="paidAmount" type="number">
+      Total paid amount
+    </ResponseField>
+    <ResponseField name="unpaidAmount" type="number">
+      Total unpaid amount
+    </ResponseField>
+    <ResponseField name="overdueAmount" type="number">
+      Total overdue amount
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+```typescript
+const summary = await trpc.customers.getInvoiceSummary.query({
+  id: 'customer-uuid',
+});
+```
+
+### getByPortalId
+
+<Note>Public endpoint - no authentication required</Note>
+
+Retrieve customer information using their portal ID (for customer portal).
+
+<ParamField query="portalId" type="string" required>
+  The customer's unique portal ID
+</ParamField>
+
+<ResponseField name="data" type="object">
+  <Expandable title="properties">
+    <ResponseField name="customer" type="object">
+      Customer object with limited fields
+    </ResponseField>
+    <ResponseField name="summary" type="object">
+      Invoice summary for this customer
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+```typescript
+const { customer, summary } = await trpc.customers.getByPortalId.query({
+  portalId: 'unique-portal-id',
+});
+```
+
+### getPortalInvoices
+
+<Note>Public endpoint - no authentication required</Note>
+
+Get invoices for a customer via their portal.
+
+<ParamField query="portalId" type="string" required>
+  The customer's unique portal ID
+</ParamField>
+
+<ParamField query="cursor" type="string" optional>
+  Pagination cursor
+</ParamField>
+
+<ParamField query="pageSize" type="number" optional>
+  Number of results per page
+</ParamField>
+
+<ResponseField name="data" type="object">
+  <Expandable title="properties">
+    <ResponseField name="data" type="array">
+      Array of invoice objects
+    </ResponseField>
+    <ResponseField name="meta" type="object">
+      Pagination metadata with cursor
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Mutation Endpoints
+
+### upsert
+
+Create a new customer or update an existing one.
+
+<ParamField body="id" type="string" optional>
+  Customer UUID (for updates, omit for new customers)
+</ParamField>
+
+<ParamField body="name" type="string" required>
+  Customer name
+</ParamField>
+
+<ParamField body="email" type="string" optional>
+  Email address
+</ParamField>
+
+<ParamField body="phone" type="string" optional>
+  Phone number
+</ParamField>
+
+<ParamField body="website" type="string" optional>
+  Website URL
+</ParamField>
+
+<ParamField body="address" type="object" optional>
+  Address object
+</ParamField>
+
+<ParamField body="vatNumber" type="string" optional>
+  VAT/tax ID number
+</ParamField>
+
+<ParamField body="note" type="string" optional>
+  Internal notes
+</ParamField>
+
+<ResponseField name="customer" type="object">
+  The created or updated customer object
+</ResponseField>
+
+```typescript
+// Create new customer
+const customer = await trpc.customers.upsert.mutate({
+  name: 'Acme Corporation',
+  email: 'billing@acme.com',
+  website: 'https://acme.com',
+  address: {
+    line1: '123 Main St',
+    city: 'New York',
+    state: 'NY',
+    zip: '10001',
+    country: 'US',
+  },
+});
+
+// Update existing customer
+const updated = await trpc.customers.upsert.mutate({
+  id: 'existing-uuid',
+  email: 'newemail@acme.com',
+});
+```
+
+<Note>
+When creating a new customer with a website, AI enrichment is automatically triggered to fetch additional company information.
+</Note>
+
+### delete
+
+Delete a customer.
+
+<ParamField body="id" type="string" required>
+  Customer UUID
+</ParamField>
+
+```typescript
+await trpc.customers.delete.mutate({
+  id: 'customer-uuid',
+});
+```
+
+### togglePortal
+
+Enable or disable customer portal access.
+
+<ParamField body="customerId" type="string" required>
+  Customer UUID
+</ParamField>
+
+<ParamField body="enabled" type="boolean" required>
+  Whether to enable or disable portal access
+</ParamField>
+
+<ResponseField name="customer" type="object">
+  Updated customer object with portalId if enabled
+</ResponseField>
+
+```typescript
+// Enable portal access
+const customer = await trpc.customers.togglePortal.mutate({
+  customerId: 'customer-uuid',
+  enabled: true,
+});
+
+console.log('Portal URL:', `https://app.midday.ai/portal/${customer.portalId}`);
+
+// Disable portal access
+await trpc.customers.togglePortal.mutate({
+  customerId: 'customer-uuid',
+  enabled: false,
+});
+```
+
+## AI Enrichment
+
+### enrich
+
+Manually trigger AI enrichment for a customer.
+
+<ParamField body="id" type="string" required>
+  Customer UUID
+</ParamField>
+
+<ResponseField name="data" type="object">
+  <Expandable title="properties">
+    <ResponseField name="queued" type="boolean">
+      Whether the enrichment job was queued successfully
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+```typescript
+await trpc.customers.enrich.mutate({
+  id: 'customer-uuid',
+});
+```
+
+<Note>
+Enrichment requires the customer to have a website. The AI will fetch company information like logo, description, industry, and social media links.
+</Note>
+
+### cancelEnrichment
+
+Cancel an in-progress enrichment job.
+
+<ParamField body="id" type="string" required>
+  Customer UUID
+</ParamField>
+
+```typescript
+await trpc.customers.cancelEnrichment.mutate({
+  id: 'customer-uuid',
+});
+```
+
+### clearEnrichment
+
+Clear enrichment data for a customer.
+
+<ParamField body="id" type="string" required>
+  Customer UUID
+</ParamField>
+
+```typescript
+await trpc.customers.clearEnrichment.mutate({
+  id: 'customer-uuid',
+});
+```
+
+## Customer Portal
+
+The customer portal allows your clients to view their invoices and payment status without logging into your system.
+
+### Enabling Portal Access
+
+```typescript
+// 1. Enable portal for a customer
+const customer = await trpc.customers.togglePortal.mutate({
+  customerId: 'customer-uuid',
+  enabled: true,
+});
+
+// 2. Share the portal URL with your customer
+const portalUrl = `https://app.midday.ai/portal/${customer.portalId}`;
+
+// 3. Customer can access their invoices without authentication
+```
+
+### Portal Features
+
+- View all invoices (paid, unpaid, overdue)
+- Download invoice PDFs
+- See payment status and history
+- View invoice summaries and totals
+- No login required - access via unique secure link

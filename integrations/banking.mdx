@@ -1,0 +1,412 @@
+---
+title: "Banking Integrations"
+description: "Connect GoCardLess, Plaid, and Teller to sync bank transactions"
+---
+
+Midday supports three major banking providers to connect bank accounts across different regions. All providers use OAuth flows and webhook-based sync.
+
+## Architecture
+
+The banking package (`~/workspace/source/packages/banking/`) provides a unified interface for all providers:
+
+```typescript
+import { Provider } from "@midday/banking";
+
+const provider = new Provider({ provider: "plaid" });
+
+// Unified API works across all providers
+const accounts = await provider.getAccounts({ accessToken, institutionId });
+const transactions = await provider.getTransactions({ accessToken, accountId });
+const balance = await provider.getAccountBalance({ accessToken, accountId });
+```
+
+### Provider Interface
+
+All banking providers implement the same interface (`~/workspace/source/packages/banking/src/interface.ts`):
+
+```typescript
+interface Provider {
+  getTransactions(params: GetTransactionsRequest): Promise<GetTransactionsResponse>;
+  getAccounts(params: GetAccountsRequest): Promise<GetAccountsResponse>;
+  getAccountBalance(params: GetAccountBalanceRequest): Promise<GetAccountBalanceResponse>;
+  getInstitutions(params: GetInstitutionsRequest): Promise<GetInstitutionsResponse>;
+  getHealthCheck(): Promise<boolean>;
+  deleteAccounts(params: DeleteAccountsRequest): void;
+  getConnectionStatus(params: GetConnectionStatusRequest): Promise<GetConnectionStatusResponse>;
+  deleteConnection(params: DeleteConnectionRequest): void;
+}
+```
+
+## GoCardLess
+
+GoCardLess provides Open Banking access to European banks via PSD2.
+
+### Configuration
+
+<Steps>
+  <Step title="Get API Credentials">
+    Sign up at [GoCardLess Bank Account Data](https://bankaccountdata.gocardless.com/) and create an application.
+  </Step>
+  
+  <Step title="Set Environment Variables">
+    Add your credentials to your environment:
+
+    ```bash
+    GOCARDLESS_SECRET_ID=your_secret_id
+    GOCARDLESS_SECRET_KEY=your_secret_key
+    ```
+  </Step>
+
+  <Step title="Initialize Provider">
+    The provider automatically handles token refresh:
+
+    ```typescript
+    import { Provider } from "@midday/banking";
+
+    const provider = new Provider({ provider: "gocardless" });
+    ```
+  </Step>
+</Steps>
+
+### Features
+
+- **Coverage**: European banks supporting PSD2 Open Banking
+- **Authentication**: OAuth via requisitions (consent links)
+- **Token Management**: Automatic access token refresh
+- **Data**: Transactions, balances, account details
+
+### API Usage
+
+GoCardLess uses requisition IDs for account access:
+
+```typescript
+// Get accounts using requisition ID
+const accounts = await provider.getAccounts({ id: requisitionId });
+
+// Get transactions for an account
+const transactions = await provider.getTransactions({
+  accountId: account.id,
+  accountType: account.type,
+  latest: true // Only fetch recent transactions
+});
+
+// Get account balance
+const balance = await provider.getAccountBalance({
+  accountId: account.id,
+  accountType: account.type
+});
+```
+
+### Implementation Details
+
+Location: `~/workspace/source/packages/banking/src/providers/gocardless/`
+
+- **API Client**: `gocardless-api.ts` handles authentication and requests
+- **Provider**: `gocardless-provider.ts` implements the unified interface
+- **Transforms**: `transform.ts` normalizes GoCardLess data to Midday format
+
+<Accordion title="Token Refresh Flow">
+  GoCardLess tokens expire after 1 hour. The API client automatically:
+  
+  1. Caches access tokens with TTL
+  2. Uses refresh token when access token expires
+  3. Generates new token pair when refresh token expires
+  4. Stores tokens in banking cache
+
+  See: `~/workspace/source/packages/banking/src/providers/gocardless/gocardless-api.ts:67-81`
+</Accordion>
+
+## Plaid
+
+Plaid provides banking connectivity for US and Canadian financial institutions.
+
+### Configuration
+
+<Steps>
+  <Step title="Get API Credentials">
+    Sign up at [Plaid Dashboard](https://dashboard.plaid.com/) and create an application.
+  </Step>
+  
+  <Step title="Set Environment Variables">
+    ```bash
+    PLAID_CLIENT_ID=your_client_id
+    PLAID_SECRET=your_secret
+    PLAID_ENVIRONMENT=production # or 'sandbox' for testing
+    ```
+  </Step>
+
+  <Step title="Configure Webhook URL">
+    Plaid sends webhooks to:
+    - Production: `https://api.midday.ai/webhook/plaid`
+    - Sandbox: `https://api-staging.midday.ai/webhook/plaid`
+
+    The webhook URL is automatically configured during Link token creation.
+  </Step>
+</Steps>
+
+### Features
+
+- **Coverage**: 12,000+ US and Canadian financial institutions
+- **Authentication**: Plaid Link web component
+- **Sync Mode**: Webhook-based with transactions sync API
+- **Balance Types**: Available, current, limit (for credit accounts)
+
+### API Usage
+
+Plaid uses access tokens for account access:
+
+```typescript
+// Exchange public token from Link for access token
+const exchangeResponse = await plaidApi.exchangePublicToken({
+  publicToken: linkPublicToken,
+  institutionId: institutionId
+});
+
+const accessToken = exchangeResponse.access_token;
+
+// Get accounts
+const accounts = await provider.getAccounts({ 
+  accessToken,
+  institutionId 
+});
+
+// Get transactions (uses Plaid Sync API)
+const transactions = await provider.getTransactions({
+  accessToken,
+  accountId: account.id,
+  accountType: account.type,
+  latest: false // Full sync
+});
+```
+
+### Implementation Details
+
+Location: `~/workspace/source/packages/banking/src/providers/plaid/`
+
+- **API Client**: `plaid-api.ts` uses official Plaid Node SDK
+- **Provider**: `plaid-provider.ts` implements the unified interface
+- **Transforms**: `transform.ts` normalizes Plaid data
+
+<Accordion title="Webhook Events">
+  Plaid sends webhooks for transaction updates:
+
+  **Transaction Webhooks**:
+  - `SYNC_UPDATES_AVAILABLE` - New transactions to sync
+  - `DEFAULT_UPDATE` - Legacy webhook for transaction updates
+  - `INITIAL_UPDATE` - First sync after connection
+  - `HISTORICAL_UPDATE` - Historical data sync
+  - `TRANSACTIONS_REMOVED` - Transactions deleted by bank
+
+  **Item Webhooks**:
+  - `ERROR` - Connection error (marks connection as disconnected)
+  - `PENDING_DISCONNECT` - User initiated disconnection
+  - `USER_PERMISSION_REVOKED` - User revoked access
+  - `LOGIN_REPAIRED` - User reconnected account
+
+  See: `~/workspace/source/apps/api/src/rest/routers/webhooks/plaid/index.ts`
+</Accordion>
+
+### Health Check
+
+Plaid health status is checked via their public status page:
+
+```typescript
+const isHealthy = await provider.getHealthCheck();
+// Checks https://status.plaid.com/api/v2/status.json
+```
+
+## Teller
+
+Teller provides modern banking API access for US banks.
+
+### Configuration
+
+<Steps>
+  <Step title="Get API Credentials">
+    Sign up at [Teller.io](https://teller.io/) and get your certificate and private key.
+  </Step>
+  
+  <Step title="Set Environment Variables">
+    Teller uses certificate-based authentication:
+
+    ```bash
+    TELLER_CERT_BASE64=base64_encoded_certificate
+    TELLER_KEY_BASE64=base64_encoded_private_key
+    ```
+  </Step>
+
+  <Step title="Configure Webhook">
+    Set your webhook URL in the Teller dashboard:
+    ```
+    https://api.midday.ai/webhook/teller
+    ```
+  </Step>
+</Steps>
+
+### Features
+
+- **Coverage**: Major US banks
+- **Authentication**: Certificate-based API access
+- **Balance Strategy**: Free balance from transaction `running_balance`
+- **Account Details**: Instant access to routing/account numbers
+
+### API Usage
+
+Teller uses access tokens (enrollment tokens):
+
+```typescript
+// Get accounts with access token
+const accounts = await provider.getAccounts({ 
+  accessToken: enrollmentToken 
+});
+
+// Accounts include routing/account numbers
+accounts.forEach(account => {
+  console.log(account.routing_numbers);
+  console.log(account.account_number);
+});
+
+// Get transactions
+const transactions = await provider.getTransactions({
+  accessToken: enrollmentToken,
+  accountId: account.id,
+  accountType: account.type,
+  latest: true // Fetch last 100 transactions
+});
+
+// Get balance (free via running_balance)
+const balance = await provider.getAccountBalance({
+  accessToken: enrollmentToken,
+  accountId: account.id
+});
+```
+
+### Implementation Details
+
+Location: `~/workspace/source/packages/banking/src/providers/teller/`
+
+- **API Client**: `teller-api.ts` handles certificate authentication
+- **Provider**: `teller-provider.ts` implements the unified interface
+- **Transforms**: `transform.ts` normalizes Teller data
+
+<Accordion title="Free Balance Strategy">
+  Teller charges for balance API calls, but includes `running_balance` in transaction data for free.
+
+  Midday's balance strategy:
+  1. Fetch recent transactions (free)
+  2. Extract `running_balance` from the first transaction with a balance
+  3. Return balance without extra API cost
+
+  This works for both depository and credit accounts. Only fails for brand new accounts with no transactions (rare).
+
+  See: `~/workspace/source/packages/banking/src/providers/teller/teller-api.ts:84-100`
+</Accordion>
+
+<Accordion title="Webhook Events">
+  Teller sends webhooks for:
+
+  - `enrollment.disconnected` - User disconnected their account
+  - `transactions.processed` - New transactions available
+  - `account.number_verification.processed` - Account verification complete
+  - `webhook.test` - Test webhook event
+
+  See: `~/workspace/source/apps/api/src/rest/routers/webhooks/teller/index.ts`
+</Accordion>
+
+## Connection Management
+
+### Health Monitoring
+
+Check the health of all banking providers:
+
+```typescript
+const provider = new Provider({ provider: "plaid" });
+const health = await provider.getHealthCheck();
+
+if (!health.plaid.healthy) {
+  // Handle Plaid outage
+}
+```
+
+### Connection Status
+
+Check if a connection is still valid:
+
+```typescript
+const status = await provider.getConnectionStatus({ 
+  accessToken,
+  id: connectionId 
+});
+
+if (status.status === "disconnected") {
+  // Prompt user to reconnect
+}
+```
+
+### Deleting Connections
+
+```typescript
+// Delete all accounts for a connection
+await provider.deleteAccounts({ accessToken });
+
+// Delete the connection itself
+await provider.deleteConnection({ accessToken, id: connectionId });
+```
+
+## Error Handling
+
+All providers use unified error handling via `ProviderError`:
+
+```typescript
+import { ProviderError, getProviderErrorDetails } from "@midday/banking";
+
+try {
+  await provider.getTransactions({ ... });
+} catch (error) {
+  if (error instanceof ProviderError) {
+    const details = getProviderErrorDetails(error);
+    console.error(details.message, details.code, details.statusCode);
+  }
+}
+```
+
+See: `~/workspace/source/packages/banking/src/utils/error.ts`
+
+## Rate Limiting
+
+All provider API calls use automatic retry with exponential backoff:
+
+```typescript
+import { withRateLimitRetry } from "@midday/banking/utils/retry";
+
+const data = await withRateLimitRetry(() => 
+  api.getSomeData()
+);
+```
+
+Defaults:
+- Max retries: 3
+- Exponential backoff: 1s, 2s, 4s
+- Rate limit detection: HTTP 429 or provider-specific codes
+
+## Testing
+
+<CodeGroup>
+```typescript Sandbox Mode (Plaid)
+process.env.PLAID_ENVIRONMENT = "sandbox";
+
+const provider = new Provider({ provider: "plaid" });
+// Uses https://sandbox.plaid.com
+```
+
+```typescript Test Credentials
+// Use sandbox credentials for testing
+PLAID_CLIENT_ID=your_sandbox_client_id
+PLAID_SECRET=your_sandbox_secret
+PLAID_ENVIRONMENT=sandbox
+```
+</CodeGroup>
+
+<Warning>
+  Never commit real API credentials to version control. Use environment variables and keep secrets in secure storage.
+</Warning>

@@ -1,0 +1,575 @@
+---
+title: Transaction Management
+description: View, categorize, and reconcile all your financial transactions with powerful filtering, bulk editing, and automatic categorization.
+---
+
+## Overview
+
+The Transactions page is your central hub for managing all financial activity. Connect your bank accounts to automatically import transactions, categorize spending, attach receipts, and export to your accounting software.
+
+## Transaction Table
+
+### View Options
+
+The transactions table provides a comprehensive view of all financial activity:
+
+```typescript
+const transactionColumns = [
+  "date",           // Transaction date
+  "description",    // Merchant/description
+  "amount",         // Transaction amount
+  "category",       // Expense/income category
+  "account",        // Bank account
+  "status",         // Reconciliation status
+  "attachments",    // Receipt/invoice count
+  "assigned",       // Team member
+  "tags",           // Custom tags
+  "actions"         // Quick actions
+]
+```
+
+### Customizing Columns
+
+<Steps>
+  <Step title="Open column settings">
+    Click the column visibility icon in the header.
+  </Step>
+  
+  <Step title="Toggle columns">
+    Show or hide columns based on your needs.
+  </Step>
+  
+  <Step title="Reorder columns">
+    Drag column headers to rearrange (table view).
+  </Step>
+  
+  <Step title="Resize columns">
+    Drag column borders to adjust width.
+  </Step>
+</Steps>
+
+<Note>
+  Your column preferences are saved automatically and persist across sessions.
+</Note>
+
+## Transaction Tabs
+
+### All Transactions
+
+The **All** tab shows every transaction from connected accounts:
+
+- Sorted by date (newest first)
+- Apply filters to narrow down
+- Bulk actions available
+- Export options
+
+### Review Queue
+
+The **Review** tab shows transactions that need attention:
+
+```typescript
+const reviewCriteria = {
+  fulfilled: true,        // Ready for review
+  exported: false,        // Not yet exported
+  missing: [
+    "category",          // Uncategorized
+    "attachment",        // Missing receipt
+    "note"              // Needs description
+  ]
+}
+```
+
+<Card title="Review Queue" icon="list-check">
+  The review queue helps you:
+  - Categorize uncategorized transactions
+  - Attach missing receipts
+  - Add notes and context
+  - Prepare for export to accounting
+</Card>
+
+Once reviewed, transactions move out of the queue automatically.
+
+## Importing Transactions
+
+### Automatic Import
+
+Connect bank accounts for automatic transaction import:
+
+<Steps>
+  <Step title="Connect bank account">
+    Go to Settings → Accounts and connect your bank using GoCardless or Plaid.
+  </Step>
+  
+  <Step title="Automatic sync">
+    Transactions sync automatically every few hours.
+  </Step>
+  
+  <Step title="Real-time updates">
+    New transactions appear in the table immediately after sync.
+  </Step>
+</Steps>
+
+See [Banking Connections](/integrations/banking) for detailed setup instructions.
+
+### Manual Upload
+
+Upload transactions from CSV files:
+
+<Tabs>
+  <Tab title="CSV Format">
+    ```csv
+    date,description,amount,category
+    2026-02-28,"Acme Corp",1500.00,"Income"
+    2026-02-27,"Office Supplies",-250.00,"Supplies"
+    2026-02-26,"Software Subscription",-99.00,"Software"
+    ```
+  </Tab>
+  
+  <Tab title="Upload Process">
+    <Steps>
+      <Step title="Prepare CSV">
+        Export from your bank or create a CSV with required columns.
+      </Step>
+      
+      <Step title="Upload file">
+        Click "Add Transactions" and select your CSV file.
+      </Step>
+      
+      <Step title="Map columns">
+        Match CSV columns to Midday fields.
+      </Step>
+      
+      <Step title="Import">
+        Review and confirm the import.
+      </Step>
+    </Steps>
+  </Tab>
+</Tabs>
+
+<Note>
+  Midday automatically detects and prevents duplicate transactions based on date, amount, and description.
+</Note>
+
+## Categorization
+
+### Automatic Categorization
+
+Midday uses AI to automatically categorize transactions:
+
+```typescript
+const autoCategories = [
+  // Income
+  "Revenue",
+  "Interest Income",
+  "Refunds",
+  
+  // Expenses
+  "Advertising",
+  "Bank Fees",
+  "Equipment",
+  "Insurance",
+  "Meals & Entertainment",
+  "Office Supplies",
+  "Professional Services",
+  "Rent",
+  "Software",
+  "Travel",
+  "Utilities",
+  
+  // Other
+  "Transfer",
+  "Uncategorized"
+]
+```
+
+The AI learns from your corrections and improves over time.
+
+### Manual Categorization
+
+<Steps>
+  <Step title="Select transaction">
+    Click on a transaction row to open details.
+  </Step>
+  
+  <Step title="Choose category">
+    Click the category dropdown and select the correct category.
+  </Step>
+  
+  <Step title="Save">
+    The category is saved immediately and used for future similar transactions.
+  </Step>
+</Steps>
+
+### Bulk Categorization
+
+Categorize multiple transactions at once:
+
+1. Select multiple transactions (checkboxes)
+2. Click "Bulk Edit" in the action bar
+3. Choose "Set Category"
+4. Select category to apply to all
+
+<Warning>
+  Bulk categorization overwrites existing categories. Review selections carefully before applying.
+</Warning>
+
+## Transaction Details
+
+### Viewing Details
+
+Click any transaction to see full details:
+
+```typescript
+const transactionDetail = {
+  // Basic info
+  id: "txn_123",
+  date: "2026-02-28",
+  amount: -250.00,
+  currency: "USD",
+  description: "ACME CORP",
+  
+  // Enrichment
+  category: "Software",
+  tags: ["recurring", "subscription"],
+  note: "Monthly subscription for project tools",
+  
+  // Metadata
+  method: "card",
+  status: "posted",
+  account: "Business Checking",
+  balance: 25750.00,
+  
+  // Relationships
+  attachments: ["receipt.pdf"],
+  inboxItem: "inbox_456",
+  assigned: "user_789"
+}
+```
+
+### Editing Transactions
+
+Modify transaction details:
+
+**Editable Fields:**
+- Category
+- Tags
+- Note/description
+- Assigned team member
+- Attachments
+
+**Non-editable Fields:**
+- Amount (from bank)
+- Date (from bank)
+- Account (from bank)
+- Transaction ID
+
+## Attachments
+
+### Adding Receipts
+
+Attach receipts and invoices to transactions:
+
+<Steps>
+  <Step title="Open transaction">
+    Click the transaction to open details.
+  </Step>
+  
+  <Step title="Upload attachment">
+    Drag and drop files or click the attachment button.
+  </Step>
+  
+  <Step title="Link automatically">
+    The attachment is saved to Vault and linked to the transaction.
+  </Step>
+</Steps>
+
+### Automatic Attachment
+
+Receipts can be attached automatically:
+
+- **From Inbox:** When confirming an inbox match, the email attachment links to the transaction
+- **From Vault:** Upload files directly from transaction detail view
+- **Via Email:** Forward receipts to your Midday inbox email (coming soon)
+
+<Note>
+  Attachments are stored in your Vault and remain accessible even if the transaction is deleted.
+</Note>
+
+## Filtering & Search
+
+### Search
+
+Find transactions quickly:
+
+```typescript
+const searchOptions = [
+  "Merchant name",
+  "Transaction description",
+  "Amount (exact or range)",
+  "Category",
+  "Note content"
+]
+```
+
+Search is real-time and highlights matching transactions.
+
+### Filters
+
+Narrow down transactions with powerful filters:
+
+**Date Filters:**
+- Today
+- Yesterday  
+- Last 7 days
+- Last 30 days
+- This month
+- Last month
+- Custom date range
+
+**Amount Filters:**
+- Min/max range
+- Exact amount
+- Greater than
+- Less than
+
+**Category Filters:**
+- Single category
+- Multiple categories
+- Uncategorized only
+
+**Status Filters:**
+- Posted
+- Pending
+- Cleared
+- Reconciled
+
+**Other Filters:**
+- By bank account
+- Has attachments
+- Has tags
+- Assigned to team member
+
+<Tabs>
+  <Tab title="Quick Filters">
+    ```typescript
+    const quickFilters = {
+      uncategorized: { category: null },
+      needsReceipt: { attachments: 0, amount: { lt: -50 } },
+      largeExpenses: { amount: { lt: -1000 } },
+      thisMonth: { date: { gte: "2026-02-01" } }
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Saved Filters">
+    Save commonly used filter combinations:
+    - "Monthly Expenses"
+    - "Client Income"
+    - "Needs Review"
+    - "Tax Deductible"
+    
+    Access saved filters from the filter dropdown.
+  </Tab>
+</Tabs>
+
+## Bulk Actions
+
+### Selection
+
+Select multiple transactions for bulk operations:
+
+- Click checkboxes on individual transactions
+- Use `Shift + Click` to select a range
+- Use "Select All" to select all visible transactions
+
+### Available Actions
+
+<Card title="Bulk Operations" icon="list-check">
+  - **Set Category** - Apply category to all selected
+  - **Add Tags** - Tag multiple transactions
+  - **Assign** - Assign to team member
+  - **Export** - Export selected to accounting
+  - **Delete** - Remove selected transactions
+</Card>
+
+The bulk action bar appears at the bottom when items are selected.
+
+## Tagging System
+
+### Creating Tags
+
+Organize transactions with custom tags:
+
+```typescript
+const tagExamples = [
+  "recurring",        // Recurring expenses
+  "deductible",      // Tax deductible
+  "reimbursable",    // To be reimbursed
+  "client-acme",     // Client-specific
+  "project-x",       // Project-specific
+  "q1-2026"         // Time period
+]
+```
+
+### Tag Management
+
+- **Create:** Type new tag name when assigning
+- **Color-coded:** Auto-assigned colors for easy identification
+- **Filter by tags:** Click tag to filter transactions
+- **Bulk tagging:** Apply tags to multiple transactions
+
+## Reconciliation
+
+### Manual Reconciliation
+
+Reconcile transactions with bank statements:
+
+<Steps>
+  <Step title="Filter by account and period">
+    Show only transactions for the account and time period you're reconciling.
+  </Step>
+  
+  <Step title="Mark as reconciled">
+    Check off transactions that match your bank statement.
+  </Step>
+  
+  <Step title="Identify discrepancies">
+    Unmatched transactions need investigation.
+  </Step>
+  
+  <Step title="Lock period">
+    Once reconciled, lock the period to prevent changes.
+  </Step>
+</Steps>
+
+### Reconciliation Status
+
+```typescript
+type ReconciliationStatus = 
+  | "pending"      // Not yet reconciled
+  | "cleared"      // Confirmed by bank
+  | "reconciled"   // Manually confirmed
+  | "locked"       // Period locked, no edits
+```
+
+## Export to Accounting
+
+### Supported Platforms
+
+Export transactions to accounting software:
+
+- **QuickBooks Online**
+- **Xero**
+- **Fortnox**
+- **CSV** (custom format)
+
+### Export Process
+
+<Steps>
+  <Step title="Select transactions">
+    Choose transactions to export (usually from Review tab).
+  </Step>
+  
+  <Step title="Choose destination">
+    Select your connected accounting platform.
+  </Step>
+  
+  <Step title="Map accounts">
+    Ensure categories map to correct accounts in your accounting system.
+  </Step>
+  
+  <Step title="Export">
+    Transactions sync to your accounting platform with attachments.
+  </Step>
+</Steps>
+
+<Note>
+  Exported transactions are marked to prevent duplicate exports. You can re-export if needed by removing the export flag.
+</Note>
+
+See [Accounting Integrations](/integrations/accounting) for setup details.
+
+## Team Collaboration
+
+### Assigning Transactions
+
+Delegate transaction review to team members:
+
+```typescript
+const assignment = {
+  transactionId: "txn_123",
+  assignedTo: "user_456",
+  assignedBy: "user_789",
+  assignedAt: "2026-02-28T10:00:00Z",
+  status: "pending_review"
+}
+```
+
+**Use Cases:**
+- Assign expenses to employee for receipt upload
+- Assign transactions to bookkeeper for categorization
+- Assign large expenses to manager for approval
+
+### Team Visibility
+
+All team members can:
+- View all team transactions
+- Filter by assigned member
+- See who made changes
+- Add notes and comments
+
+## Keyboard Shortcuts
+
+- `N` - Add new transaction
+- `F` - Open filters
+- `/` - Focus search
+- `E` - Export selected
+- `C` - Categorize selected
+- `T` - Add tags
+- `Space` - Open transaction details
+- `Esc` - Close details/modals
+
+## Best Practices
+
+<Note>
+  **Pro Tip:** Process transactions weekly rather than monthly. This keeps your books current and makes month-end close much faster.
+</Note>
+
+1. **Connect bank accounts** - Automate transaction import
+2. **Review weekly** - Don't let transactions pile up
+3. **Use consistent categories** - Makes reporting accurate
+4. **Attach receipts promptly** - While you still have them
+5. **Tag for easy filtering** - Create a tagging system
+6. **Export regularly** - Keep accounting system in sync
+7. **Use bulk actions** - Process similar transactions together
+8. **Lock reconciled periods** - Prevent accidental changes
+
+## Troubleshooting
+
+**Transactions not syncing?**
+- Check bank connection status in Settings → Accounts
+- Reconnect bank account if needed
+- Manual sync from account settings
+- Contact support if issues persist
+
+**Duplicate transactions appearing?**
+- Midday automatically deduplicates based on date, amount, and description
+- If duplicates appear, one may be pending and one posted
+- Delete duplicates manually if needed
+
+**Wrong category assigned?**
+- Correct the category and AI learns from your change
+- Check if similar transactions need updating
+- Use bulk edit for multiple similar transactions
+
+**Can't export transactions?**
+- Verify accounting integration is connected
+- Check if transactions are already exported
+- Ensure all required fields are filled
+- Check export logs for errors
+
+**Missing attachments?**
+- Check Vault - attachments may be there but not linked
+- Verify inbox item was confirmed
+- Re-upload attachment if missing
+- Check file size limits

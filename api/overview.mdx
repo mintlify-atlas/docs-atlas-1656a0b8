@@ -1,0 +1,191 @@
+---
+title: "API Overview"
+description: "Introduction to the Midday API - both tRPC and REST endpoints"
+---
+
+## Welcome to the Midday API
+
+Midday provides two API options to integrate with your platform:
+
+1. **REST API** - Standard HTTP endpoints for external integrations
+2. **tRPC API** - Type-safe RPC for TypeScript applications
+
+Both APIs provide access to the same core functionality including invoicing, time tracking, transactions, documents, and more.
+
+## Base URLs
+
+<ParamField path="Production REST API" type="string">
+  ```
+  https://api.midday.ai
+  ```
+</ParamField>
+
+<ParamField path="Production tRPC API" type="string">
+  ```
+  https://api.midday.ai/trpc
+  ```
+</ParamField>
+
+## API Architecture
+
+### REST API
+
+The REST API follows OpenAPI 3.1.0 specification and is available at `https://api.midday.ai`. All REST endpoints use standard HTTP methods:
+
+- `GET` - Retrieve resources
+- `POST` - Create new resources
+- `PUT` - Update existing resources
+- `DELETE` - Remove resources
+- `PATCH` - Partially update resources
+
+<Note>
+  View the interactive API reference at [https://api.midday.ai](https://api.midday.ai) powered by Scalar.
+</Note>
+
+### tRPC API
+
+The tRPC API provides end-to-end type safety for TypeScript applications. It's available at `https://api.midday.ai/trpc` and uses JSON-RPC protocol.
+
+```typescript
+import { createTRPCProxyClient, httpBatchLink } from '@trpc/client';
+import type { AppRouter } from '@midday/api';
+
+const client = createTRPCProxyClient<AppRouter>({
+  links: [
+    httpBatchLink({
+      url: 'https://api.midday.ai/trpc',
+      headers: {
+        Authorization: `Bearer ${process.env.MIDDAY_API_KEY}`,
+      },
+    }),
+  ],
+});
+
+// Type-safe API calls
+const transactions = await client.transactions.get.query();
+```
+
+## Request Format
+
+### REST API
+
+All REST requests must include:
+
+- `Content-Type: application/json` header for POST/PUT/PATCH requests
+- `Authorization: Bearer <token>` header for authentication
+
+```bash
+curl https://api.midday.ai/transactions \
+  -H "Authorization: Bearer mid_your_api_key_here" \
+  -H "Content-Type: application/json"
+```
+
+### tRPC API
+
+TRPC requests use JSON-RPC format. When using the tRPC client, this is handled automatically.
+
+## Response Format
+
+All API responses use JSON format.
+
+### Success Response
+
+```json
+{
+  "data": {
+    "id": "trans_123",
+    "amount": 1000,
+    "currency": "USD"
+  }
+}
+```
+
+### Error Response
+
+```json
+{
+  "error": "Unauthorized",
+  "description": "Invalid API key"
+}
+```
+
+## Available Resources
+
+The Midday API provides access to the following resources:
+
+<CardGroup cols={2}>
+  <Card title="Transactions" icon="money-bill-transfer">
+    Manage financial transactions and categorization
+  </Card>
+  <Card title="Invoices" icon="file-invoice">
+    Create, update, and manage invoices
+  </Card>
+  <Card title="Customers" icon="users">
+    Manage customer information
+  </Card>
+  <Card title="Documents" icon="file">
+    Upload and manage documents
+  </Card>
+  <Card title="Bank Accounts" icon="building-columns">
+    Access bank account information
+  </Card>
+  <Card title="Time Tracking" icon="clock">
+    Track time entries and projects
+  </Card>
+  <Card title="Reports" icon="chart-line">
+    Generate financial reports and insights
+  </Card>
+  <Card title="Teams" icon="people-group">
+    Manage team settings and members
+  </Card>
+</CardGroup>
+
+## CORS Support
+
+The API supports Cross-Origin Resource Sharing (CORS) for allowed origins. Allowed origins are configured via the `ALLOWED_API_ORIGINS` environment variable.
+
+Supported headers:
+- `Authorization`
+- `Content-Type`
+- `User-Agent`
+- `x-request-id`
+- `x-user-locale`
+- `x-user-timezone`
+- `x-user-country`
+
+## Health Checks
+
+The API provides health check endpoints for monitoring:
+
+<CodeGroup>
+```bash Basic Health
+curl https://api.midday.ai/health
+```
+
+```bash Readiness Check
+curl https://api.midday.ai/health/ready
+```
+
+```bash Dependencies Check
+curl https://api.midday.ai/health/dependencies
+```
+</CodeGroup>
+
+## API Versioning
+
+<Warning>
+  The Midday API is currently at version 0.0.1 and is subject to change. Breaking changes will be communicated in advance.
+</Warning>
+
+Current version: **0.0.1**
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="key" href="/api/authentication">
+    Learn how to authenticate your API requests
+  </Card>
+  <Card title="Rate Limits" icon="gauge" href="/api/rate-limits">
+    Understand rate limiting policies
+  </Card>
+</CardGroup>

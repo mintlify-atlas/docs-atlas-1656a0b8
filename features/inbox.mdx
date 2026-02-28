@@ -1,0 +1,415 @@
+---
+title: Magic Inbox
+description: Automatically match email receipts and invoices to transactions with AI-powered recognition for effortless expense reconciliation.
+---
+
+## Overview
+
+The Magic Inbox is Midday's intelligent email processing system that automatically extracts transaction information from your receipts, invoices, and financial emails. By connecting your email accounts, Midday automatically matches incoming documents with your bank transactions.
+
+## How It Works
+
+<Steps>
+  <Step title="Connect your email">
+    Link your Gmail or Outlook account to Midday. We securely access only emails that contain financial information.
+  </Step>
+  
+  <Step title="Automatic processing">
+    Our AI scans incoming emails for receipts, invoices, and transaction confirmations.
+  </Step>
+  
+  <Step title="Smart matching">
+    Midday automatically matches email attachments and content with your bank transactions based on amounts, dates, and merchant names.
+  </Step>
+  
+  <Step title="Review and confirm">
+    Review suggested matches in your inbox and confirm or adjust as needed.
+  </Step>
+</Steps>
+
+## Connecting Email Accounts
+
+### Supported Providers
+
+Midday supports the following email providers:
+
+<Tabs>
+  <Tab title="Gmail">
+    ```typescript
+    // Gmail OAuth integration
+    const gmailConnection = {
+      provider: "gmail",
+      scopes: [
+        "gmail.readonly",  // Read emails
+        "gmail.metadata"   // Access headers
+      ],
+      features: [
+        "Attachment extraction",
+        "Real-time sync",
+        "Smart filtering"
+      ]
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Outlook">
+    ```typescript
+    // Microsoft Outlook integration
+    const outlookConnection = {
+      provider: "outlook",
+      scopes: [
+        "Mail.Read",
+        "Mail.ReadBasic"
+      ],
+      features: [
+        "Attachment extraction",
+        "Real-time sync",
+        "Smart filtering"
+      ]
+    }
+    ```
+  </Tab>
+</Tabs>
+
+### Connection Process
+
+<Steps>
+  <Step title="Navigate to Inbox">
+    Go to the Inbox page in your Midday dashboard.
+  </Step>
+  
+  <Step title="Click Connect Account">
+    Choose Gmail or Outlook from the available providers.
+  </Step>
+  
+  <Step title="Authorize access">
+    Sign in and grant Midday permission to read your emails (read-only access).
+    </Step>
+  
+  <Step title="Wait for sync">
+    Midday will process your recent emails and populate the inbox. This can take up to 60 seconds.
+  </Step>
+</Steps>
+
+<Note>
+  Midday only accesses emails that contain financial information like receipts, invoices, and payment confirmations. We never read personal emails.
+</Note>
+
+## Inbox Interface
+
+### Tabs
+
+The inbox is organized into tabs for easy navigation:
+
+- **All:** Every inbox item from connected accounts
+- **Other:** Items that don't match known patterns or require attention
+
+### Item Status
+
+Inbox items have different statuses:
+
+```typescript
+type InboxStatus = 
+  | "pending"          // Awaiting processing
+  | "processing"       // AI is analyzing
+  | "suggested_match"  // Match found, needs review
+  | "done"            // Matched and confirmed
+  | "deleted"         // Removed from inbox
+```
+
+### Suggested Matches
+
+When Midday finds a potential match:
+
+<Card title="AI Matching" icon="sparkles">
+  Midday analyzes:
+  - Transaction amount
+  - Transaction date (±3 days)
+  - Merchant/vendor name
+  - Email sender domain
+  - Attachment content (PDF, images)
+</Card>
+
+You'll see a **suggested match** indicator when the AI finds a high-confidence match.
+
+## Working with Inbox Items
+
+### Reviewing Matches
+
+<Steps>
+  <Step title="Click an inbox item">
+    The details panel opens on the right showing the email content and extracted information.
+  </Step>
+  
+  <Step title="Review the match">
+    See the suggested transaction match with amount, date, and merchant details.
+  </Step>
+  
+  <Step title="Confirm or adjust">
+    - Click "Confirm Match" to accept
+    - Select a different transaction if the match is wrong
+    - Add to Vault without matching if it's not a transaction
+  </Step>
+</Steps>
+
+### Keyboard Navigation
+
+- `↑` - Move to previous item
+- `↓` - Move to next item
+- `Shift + Click` - Select multiple items
+- `Enter` - Open selected item details
+
+### Bulk Actions
+
+Process multiple items at once:
+
+<Steps>
+  <Step title="Select items">
+    Click the checkbox on items or use Shift+Click to select a range.
+  </Step>
+  
+  <Step title="Choose action">
+    The bulk actions bar appears at the bottom with options:
+    - Mark as done
+    - Move to Vault
+    - Delete selected
+  </Step>
+</Steps>
+
+## Attachment Handling
+
+### Automatic Extraction
+
+Midday automatically extracts attachments from emails:
+
+```typescript
+const attachmentTypes = [
+  "application/pdf",      // PDF receipts and invoices
+  "image/jpeg",           // Photo receipts
+  "image/png",            // Screenshot receipts
+  "application/msword",   // Word documents
+  "text/csv"             // CSV statements
+]
+```
+
+### Attachment Storage
+
+Attachments are:
+- Automatically saved to your Vault
+- Linked to matched transactions
+- OCR processed for text extraction
+- Searchable by content
+
+## Real-time Sync
+
+The inbox updates in real-time:
+
+```typescript
+const realtimeSync = {
+  channelName: "realtime_inbox",
+  updates: [
+    "New emails detected",
+    "Match suggestions updated",
+    "Status changes",
+    "Attachment processing complete"
+  ],
+  batchSize: 10, // Efficient batching
+  debounce: 200  // Smooth updates
+}
+```
+
+<Note>
+  You'll hear a subtle sound when a new suggested match is found, keeping you informed without being intrusive.
+</Note>
+
+## Filtering and Search
+
+### Search
+
+Find specific inbox items quickly:
+
+- Search by merchant name
+- Search by email subject
+- Search by amount
+- Search by sender
+
+### Filters
+
+Narrow down your inbox:
+
+- **Status:** pending, suggested_match, done
+- **Date range:** Last 7 days, 30 days, custom
+- **Has attachment:** Yes/No
+- **Matched:** Matched vs. unmatched
+
+## Empty States
+
+### Just Connected
+
+After connecting an account for the first time:
+- Midday syncs your recent emails (past 30 days)
+- A loading skeleton shows while processing
+- After 60 seconds, you'll see results or an empty state
+
+### No Items Found
+
+If no financial emails are detected:
+- Check your email account has receipts/invoices
+- Verify the date range of the sync
+- Try connecting a different email account
+
+### All Caught Up
+
+When all items are processed:
+- Congratulations message
+- Summary of matched transactions
+- Option to review matched items
+
+## Privacy & Security
+
+### Data Access
+
+<Warning>
+  Midday uses OAuth 2.0 for secure, read-only access to your email. We never store your email password.
+</Warning>
+
+**What Midday accesses:**
+- ✅ Emails identified as receipts/invoices
+- ✅ Attachments (PDFs, images)
+- ✅ Email metadata (sender, date, subject)
+
+**What Midday does NOT access:**
+- ❌ Personal emails
+- ❌ Email passwords
+- ❌ Contacts or calendar
+- ❌ Draft emails
+
+### Token Security
+
+All OAuth tokens are:
+```typescript
+const tokenSecurity = {
+  storage: "encrypted",        // AES-256 encryption
+  refreshable: true,           // Auto-refresh on expiry
+  revocable: true,            // Disconnect anytime
+  scope: "minimal"            // Only necessary permissions
+}
+```
+
+## Account Management
+
+### Inbox Settings
+
+Navigate to **Inbox → Settings** to:
+
+- View connected accounts
+- See last sync timestamp
+- Manually trigger sync
+- Disconnect accounts
+- Configure sync frequency
+
+### Disconnecting
+
+<Steps>
+  <Step title="Go to Inbox Settings">
+    Click the settings icon in the inbox header.
+  </Step>
+  
+  <Step title="Select account">
+    Choose the account you want to disconnect.
+  </Step>
+  
+  <Step title="Confirm disconnect">
+    Your tokens are immediately revoked and deleted. Existing inbox items remain in your Vault.
+  </Step>
+</Steps>
+
+## Integration with Transactions
+
+When you confirm a match:
+
+```typescript
+const matchedTransaction = {
+  transactionId: "txn_123",
+  inboxItemId: "inbox_456",
+  attachments: ["receipt.pdf"],
+  confidence: 0.95,         // AI match confidence
+  status: "done",
+  matchedAt: "2026-02-28T10:30:00Z"
+}
+```
+
+The transaction automatically:
+- Links to the receipt/invoice
+- Shows the attachment in transaction details
+- Updates in the transactions table
+- Marks inbox item as done
+
+## Best Practices
+
+<Note>
+  **Pro Tip:** Connect your primary business email where you receive most receipts and invoices for maximum automation.
+</Note>
+
+1. **Connect email early** - Start collecting matches from day one
+2. **Review suggested matches regularly** - Don't let the inbox pile up
+3. **Use bulk actions** - Process similar items together
+4. **Add context to matches** - Include notes when confirming matches
+5. **Keep attachment storage organized** - Let items move to Vault when done
+
+## Troubleshooting
+
+**No items appearing after connection?**
+- Wait the full 60 seconds for initial sync
+- Check if your email contains receipts in the date range
+- Verify email account is still connected
+- Try manual sync from settings
+
+**Wrong transaction matched?**
+- Reject the suggested match
+- Manually select the correct transaction
+- Provide feedback to improve AI matching
+
+**Missing attachments?**
+- Check if email actually contains attachments
+- Verify file type is supported
+- Look in Vault - attachments auto-save there
+
+**Email account keeps disconnecting?**
+- Re-authorize the connection
+- Check OAuth permissions in your email provider
+- Ensure account password hasn't changed
+
+## Technical Details
+
+### Sync Frequency
+
+```typescript
+const syncSchedule = {
+  realtime: true,              // WebSocket updates
+  pullInterval: "5 minutes",   // Fallback polling
+  batchSize: 50,              // Emails per sync
+  historyRange: "30 days"     // Initial sync window
+}
+```
+
+### AI Processing
+
+Inbox items are processed by:
+1. Email classification (receipt vs. invoice vs. other)
+2. Entity extraction (merchant, amount, date)
+3. OCR on attachments
+4. Transaction matching algorithm
+5. Confidence scoring
+
+### Error Handling
+
+```typescript
+// Automatic retry with exponential backoff
+const errorHandling = {
+  maxRetries: 3,
+  backoffMultiplier: 2,
+  timeoutMs: 30000,
+  fallbackToManual: true
+}
+```
